@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>OSM GeoJSON Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Leaflet.markercluster CSS and JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+  <!-- Tailwind CSS for styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f0f2f5; /* Light gray background */
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+    }
+    #map {
+        height: calc(100vh - 64px - 100px); /* Adjusted height for header and smaller control panel */
+        width: 100%;
+        flex-grow: 1;
+        border-radius: 0.5rem; /* rounded-lg */
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* shadow-lg */
+        margin-bottom: 1rem;
+    }
+    .header {
+        background-color: #1e3a8a; /* Dark blue for header */
+        padding: 1rem;
+        text-align: center;
+        color: white;
+        font-size: 1.5rem;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .back-button {
+        background-color: #3b82f6; /* Blue-500 */
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        text-decoration: none;
+        font-size: 1rem;
+        transition: background-color 0.3s ease;
+    }
+    .back-button:hover {
+        background-color: #2563eb; /* Blue-600 */
+    }
+    /* Custom marker styling for active nodes */
+    .node-marker-icon {
+        background-color: #ef4444; /* Red-500 */
+        border-radius: 50%;
+        width: 28px; /* Slightly larger for better tap target */
+        height: 28px;
+        border: 2px solid #b91c1c; /* Darker red border */
+        box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: bold;
+        color: white;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        cursor: pointer; /* Indicate clickable */
+    }
+    .node-marker-icon.low-warning {
+        background-color: #22c55e; /* Green-500 */
+        border-color: #16a34a; /* Darker green */
+    }
+    .node-marker-icon.mid-warning {
+        background-color: #f59e0b; /* Amber-500 */
+        border-color: #d97706; /* Darker amber */
+    }
+    .node-marker-icon.high-warning {
+        background-color: #dc2626; /* Red-600 */
+        border-color: #991b1b; /* Darker red */
+    }
+    /* Style for inactive nodes */
+    .node-marker-icon.inactive {
+        background-color: #94a3b8; /* Tailwind slate-400 */
+        border-color: #64748b; /* Tailwind slate-500 */
+        opacity: 0.6; /* Make it translucent */
+    }
+
+    /* Style for the control panel */
+    .control-panel {
+        background-color: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 0 auto 1rem auto; /* Center and add margin */
+        max-width: 6xl; /* Same as main content width */
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: flex-end;
+    }
+    .control-panel label {
+        font-weight: 600;
+        color: #475569; /* slate-600 */
+        margin-bottom: 0.25rem;
+        display: block;
+    }
+    .control-panel input[type="text"],
+    .control-panel input[type="number"],
+    .control-panel select { /* Added select for styling */
+        border: 1px solid #cbd5e1; /* slate-300 */
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem; /* rounded-md */
+        width: 100%;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+        background-color: white; /* Ensure consistent background */
+    }
+    .control-panel button {
+        background-color: #4f46e5; /* indigo-600 */
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-weight: bold;
+        transition: background-color 0.3s ease, transform 0.1s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .control-panel button:hover {
+        background-color: #4338ca; /* indigo-700 */
+        transform: translateY(-1px);
+    }
+    .control-panel .input-group {
+        flex: 1 1 calc(33% - 1rem); /* Roughly 3 columns, adjust as needed */
+        min-width: 150px; /* Minimum width for inputs */
+    }
+    .control-panel .button-group {
+        flex: 1 1 100%; /* Button takes full width on small screens */
+        text-align: center;
+    }
+    @media (min-width: 640px) { /* sm breakpoint */
+        .control-panel .input-group {
+            flex: 1 1 auto; /* Let flexbox handle distribution */
+        }
+        .control-panel .button-group {
+            flex: 0 0 auto; /* Button takes only necessary width */
+        }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a href="/" class="back-button">← Back to Dashboard</a>
+    <span>Sensor Location Map</span>
+    <div></div> <!-- Placeholder to balance flexbox -->
+  </header>
+
+  <div class="control-panel">
+    <div class="input-group">
+        <label for="activeNodeSelect">Select Node:</label>
+        <select id="activeNodeSelect">
+            <option value="">-- Select a node --</option>
+        </select>
+    </div>
+    <div class="input-group">
+        <label for="latitudeInput">Latitude:</label>
+        <input type="number" id="latitudeInput" step="0.000001" placeholder="e.g., 28.7041">
+    </div>
+    <div class="input-group">
+        <label for="longitudeInput">Longitude:</label>
+        <input type="number" id="longitudeInput" step="0.000001" placeholder="e.g., 77.1025">
+    </div>
+    <div class="button-group">
+        <button id="setNodeLocationBtn">Set Node Location</button>
+    </div>
+    <div id="locationStatusMessage" class="w-full text-center text-sm font-medium mt-2"></div>
+  </div>
+
+  <div id="map"></div>
+
+  <script>
+    // Initialize map with a fixed view (zoom and center)
+    const map = L.map('map').setView([20.5937, 78.9629], 5); // Centered on India, zoom level 5
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Initialize Marker Cluster Group with zoomToBoundsOnClick set to false
+    const markers = L.markerClusterGroup({
+        zoomToBoundsOnClick: false, // Prevent automatic zoom on cluster click
+        // Custom icon creation function for clusters
+        iconCreateFunction: function(cluster) {
+            const childCount = cluster.getChildCount();
+            let c = ' marker-cluster-';
+            if (childCount < 10) {
+                c += 'small';
+            } else if (childCount < 100) {
+                c += 'medium';
+            } else {
+                c += 'large';
+            }
+            return new L.DivIcon({ html: '<div><span>' + childCount + '</span></div>', className: 'marker-cluster' + c, iconSize: new L.Point(40, 40) });
+        }
+    });
+    map.addLayer(markers); // Add the cluster group to the map
+
+    // Paths for static GeoJSON layers (if you have fixed geographical features)
+    const staticLayers = [
+      { file: '/static/map/points.geojson', color: 'blue', name: 'Static Points' },
+      { file: '/static/map/lines.geojson', color: 'red', name: 'Static Lines' },
+      { file: '/static/map/multilinestrings.geojson', color: 'orange', name: 'Static Multi-Lines' },
+      { file: '/static/map/multipolygons.geojson', color: 'green', name: 'Static Coverage Areas' },
+      { file: '/static/map/other_relations.geojson', color: 'purple', name: 'Static Other Relations' }
+    ];
+
+    staticLayers.forEach(layer => {
+      fetch(layer.file)
+        .then(res => {
+          if (!res.ok) {
+            // Log 404 errors for static files but don't stop execution
+            console.warn(`Static GeoJSON file not found: ${layer.file}. Status: ${res.status}`);
+            return Promise.reject(new Error(`HTTP error! status: ${res.status}`));
+          }
+          return res.json();
+        })
+        .then(data => {
+          L.geoJSON(data, {
+            style: { color: layer.color },
+            pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
+              radius: 6,
+              fillColor: layer.color,
+              color: '#000',
+              weight: 1,
+              opacity: 1,
+              fillOpacity: 0.8
+            }),
+            onEachFeature: function (feature, layer) {
+                if (feature.properties && feature.properties.name) {
+                    layer.bindPopup(`<b>${feature.properties.name}</b><br>${feature.properties.description || ''}`);
+                } else if (feature.properties) {
+                    let popupContent = "<b>Details:</b><br>";
+                    for (const key in feature.properties) {
+                        popupContent += `${key}: ${feature.properties[key]}<br>`;
+                    }
+                    layer.bindPopup(popupContent);
+                }
+                // Add a click listener directly to the layer for populating lat/lon
+                layer.on('click', function(e) {
+                    latitudeInput.value = e.latlng.lat.toFixed(6);
+                    longitudeInput.value = e.latlng.lng.toFixed(6);
+                    showLocationMessage(`Clicked on static feature: Lat ${e.latlng.lat.toFixed(6)}, Lon ${e.latlng.lng.toFixed(6)}`, 'info');
+                });
+            }
+          }).addTo(map);
+          console.log(`Loaded ${layer.name} from ${layer.file}`);
+        })
+        .catch(err => console.error(`Failed to load static GeoJSON ${layer.file}:`, err));
+    });
+
+    const API_URL = '/api/live_data'; // Endpoint for your Flask backend
+    const SET_LOCATION_API_URL = '/api/set_node_location'; // New endpoint for setting node location
+    const FETCH_INTERVAL_MS = 2000; // Fetch data every 2 seconds for map updates
+
+    let nodeMarkers = {}; // Object to store Leaflet markers (now added to cluster group)
+    let activeNodesData = {}; // To store the full data of all known nodes for dropdown population
+    
+    // --- START: Popup Persistence Logic ---
+    let currentOpenPopupId = null; // For a node, this is the nodeId. For a cluster, it's a temporary ID (latlng string).
+    let currentOpenPopupType = null; // 'node' or 'cluster'
+    let trackedClusterMarkerId = null; // The nodeId of a marker inside a clicked cluster, used as a stable reference.
+    let isUpdatingMap = false; // Flag to indicate if map is currently being updated by fetchNodeLocations
+    // --- END: Popup Persistence Logic ---
+
+
+    // DOM elements for location input
+    const activeNodeSelect = document.getElementById('activeNodeSelect');
+    const latitudeInput = document.getElementById('latitudeInput');
+    const longitudeInput = document.getElementById('longitudeInput');
+    const setNodeLocationBtn = document.getElementById('setNodeLocationBtn');
+    const locationStatusMessage = document.getElementById('locationStatusMessage');
+
+    /**
+     * Creates a custom HTML icon for a node marker based on its warning level and active status.
+     * @param {string} nodeId - The ID of the node.
+     * @param {string} warningLevelText - The text representation of the warning level ('Low', 'Mid', 'High').
+     * @param {boolean} isActive - True if the node is currently active, false otherwise.
+     * @returns {L.DivIcon} A Leaflet DivIcon instance.
+     */
+    function createNodeIcon(nodeId, warningLevelText, isActive) {
+        let className = 'node-marker-icon';
+        if (isActive) {
+            if (warningLevelText === 'Low') {
+                className += ' low-warning';
+            } else if (warningLevelText === 'Mid') {
+                className += ' mid-warning';
+            } else if (warningLevelText === 'High') {
+                className += ' high-warning';
+            }
+        } else {
+            className += ' inactive'; // Apply inactive style
+        }
+
+        return new L.DivIcon({
+            className: className,
+            html: `<span>${nodeId}</span>`,
+            iconSize: [28, 28], // Updated size
+            iconAnchor: [14, 14] // Center the icon
+        });
+    }
+
+    /**
+     * Generates HTML content for a node's popup.
+     * @param {object} nodeData - The data for the specific node.
+     * @returns {string} HTML string for the popup.
+     */
+    function getNodePopupContent(nodeData) {
+        const timestamp = nodeData.timestamp ? new Date(nodeData.timestamp).toLocaleTimeString() : 'N/A';
+        // Determine status text based on whether the node is considered active
+        const statusText = nodeData.isActive ? 'Active' : 'Inactive';
+        const statusColor = nodeData.isActive ? 'green' : 'gray';
+
+        return `
+            <div style="font-family: 'Inter', sans-serif; font-size: 1.0rem; padding: 5px;">
+                <h4 style="font-weight: bold; margin-bottom: 5px; font-size: 1.1rem;">Node ${nodeData.nodeId}</h4>
+                <p><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: bold;">${statusText}</span></p>
+                <p><strong>MAC:</strong> ${nodeData.mac || 'N/A'}</p>
+                <p><strong>Last Update:</strong> ${timestamp}</p>
+                <p><strong>Rain:</strong> ${nodeData.rain !== undefined && nodeData.rain !== null ? nodeData.rain.toFixed(0) : 'N/A'}</p>
+                <p><strong>Soil:</strong> ${nodeData.soil !== undefined && nodeData.soil !== null ? nodeData.soil.toFixed(0) : 'N/A'}</p>
+                <p><strong>Vibration:</strong> ${nodeData.vibration !== undefined && nodeData.vibration !== null ? nodeData.vibration.toFixed(3) : 'N/A'}g</p>
+                <p><strong>Tilt:</strong> ${nodeData.tilt !== undefined && nodeData.tilt !== null ? nodeData.tilt.toFixed(1) : 'N/A'}°</p>
+                <p style="margin-top: 8px;">
+                    <strong>IF Score:</strong> ${nodeData.iso_score !== undefined && nodeData.iso_score !== null ? nodeData.iso_score.toFixed(3) : 'N/A'}<br>
+                    <strong>HST Score:</strong> ${nodeData.river_score !== undefined && nodeData.river_score !== null ? nodeData.river_score.toFixed(3) : 'N/A'}<br>
+                    <strong>Warning Level:</strong> <span style="font-weight: bold; color: ${getWarningLevelColor(nodeData.warning_level_text)};">${nodeData.warning_level_numerical !== undefined && nodeData.warning_level_numerical !== null ? nodeData.warning_level_numerical.toFixed(3) : 'N/A'} (${nodeData.warning_level_text || 'N/A'})</span>
+                </p>
+                <button onclick="populateLocationInputs('${nodeData.nodeId}', ${nodeData.latitude}, ${nodeData.longitude})"
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white py-1 px-2 rounded-md text-xs mt-2 cursor-pointer">
+                    Edit Location
+                </button>
+            </div>
+        `;
+    }
+
+    /**
+     * Returns a color string based on the warning level text.
+     * @param {string} levelText - The warning level text ('Low', 'Mid', 'High').
+     * @returns {string} CSS color string.
+     */
+    function getWarningLevelColor(levelText) {
+        switch (levelText) {
+            case 'Low': return '#22c55e'; // green-500
+            case 'Mid': return '#f59e0b'; // amber-500
+            case 'High': return '#dc2626'; // red-600
+            default: return '#475569'; // slate-600
+        }
+    }
+
+    /**
+     * Converts a numerical warning score to a text level.
+     * @param {number} score - The numerical warning score.
+     * @returns {string} 'Low', 'Mid', 'High', or 'N/A'.
+     */
+    function getWarningLevelTextFromNumerical(score) {
+        if (score === null || isNaN(score)) return 'N/A';
+        if (score >= 1.5) return 'High';
+        if (score >= 0.5) return 'Mid';
+        return 'Low';
+    }
+
+    /**
+     * Generates HTML content for a cluster's popup.
+     * @param {L.MarkerCluster} cluster - The cluster object.
+     * @returns {string} HTML string for the popup.
+     */
+    function generateClusterPopupContent(cluster) {
+        const childMarkers = cluster.getAllChildMarkers();
+        let totalRain = 0, totalSoil = 0, totalVibration = 0, totalTilt = 0;
+        let totalIsoScore = 0, totalRiverScore = 0, totalWarningLevelNumerical = 0;
+        let countRain = 0, countSoil = 0, countVibration = 0, countTilt = 0;
+        let countIsoScore = 0, countRiverScore = 0, countWarningLevelNumerical = 0;
+        const activeNodeIds = []; // Only active node IDs
+
+        childMarkers.forEach(marker => {
+            const nodeData = marker.options.nodeData; // Access nodeData stored in marker options
+            if (nodeData) {
+                if (nodeData.isActive) { // Only add to activeNodeIds if active
+                    activeNodeIds.push(nodeData.nodeId);
+                }
+
+                if (nodeData.rain !== undefined && nodeData.rain !== null) { totalRain += nodeData.rain; countRain++; }
+                if (nodeData.soil !== undefined && nodeData.soil !== null) { totalSoil += nodeData.soil; countSoil++; }
+                if (nodeData.vibration !== undefined && nodeData.vibration !== null) { totalVibration += nodeData.vibration; countVibration++; }
+                if (nodeData.tilt !== undefined && nodeData.tilt !== null) { totalTilt += nodeData.tilt; countTilt++; }
+                if (nodeData.iso_score !== undefined && nodeData.iso_score !== null) { totalIsoScore += nodeData.iso_score; countIsoScore++; }
+                if (nodeData.river_score !== undefined && nodeData.river_score !== null) { totalRiverScore += nodeData.river_score; countRiverScore++; }
+                if (nodeData.warning_level_numerical !== undefined && nodeData.warning_level_numerical !== null) { totalWarningLevelNumerical += nodeData.warning_level_numerical; countWarningLevelNumerical++; }
+            }
+        });
+
+        const avgRain = countRain > 0 ? (totalRain / countRain).toFixed(0) : 'N/A';
+        const avgSoil = countSoil > 0 ? (totalSoil / countSoil).toFixed(0) : 'N/A';
+        const avgVibration = countVibration > 0 ? (totalVibration / countVibration).toFixed(3) : 'N/A';
+        const avgTilt = countTilt > 0 ? (totalTilt / countTilt).toFixed(1) : 'N/A';
+        const avgIsoScore = countIsoScore > 0 ? (totalIsoScore / countIsoScore).toFixed(3) : 'N/A';
+        const avgRiverScore = countRiverScore > 0 ? (totalRiverScore / countRiverScore).toFixed(3) : 'N/A';
+        const avgWarningLevelNumerical = countWarningLevelNumerical > 0 ? (totalWarningLevelNumerical / countWarningLevelNumerical).toFixed(3) : 'N/A';
+        const avgWarningLevelText = getWarningLevelTextFromNumerical(parseFloat(avgWarningLevelNumerical)); // Convert avg numerical to text for color
+        const avgWarningLevelColor = getWarningLevelColor(avgWarningLevelText); // Get color based on text
+
+        return `
+            <div style="font-family: 'Inter', sans-serif; font-size: 1.0rem; max-height: 500px; width: 400px; padding: 5px; overflow-y: auto;">
+                <h4 style="font-weight: bold; margin-bottom: 5px; font-size: 1.1rem;">Cluster Summary (${childMarkers.length} Nodes)</h4>
+                <p><strong>Active Node IDs:</strong> ${activeNodeIds.length > 0 ? activeNodeIds.join(', ') : 'None'}</p>
+                <p style="margin-top: 8px;"><strong>Overall Sensor Data:</strong></p>
+                <ul>
+                    <li>Rain: ${avgRain}</li>
+                    <li>Soil: ${avgSoil}</li>
+                    <li>Vibration: ${avgVibration}g</li>
+                    <li>Tilt: ${avgTilt}°</li>
+                </ul>
+                <p style="margin-top: 8px;"><strong>Overall Anomaly Scores:</strong></p>
+                <ul>
+                    <li>IF Score: ${avgIsoScore}</li>
+                    <li>HST Score: ${avgRiverScore}</li>
+                    <li>Warning Level: <span style="font-weight: bold; color: ${avgWarningLevelColor};">${avgWarningLevelNumerical} (${avgWarningLevelText})</span></li>
+                </ul>
+            </div>
+        `;
+    }
+
+
+    /**
+     * Displays a temporary message for location actions.
+     * @param {string} message - The message to display.
+     * @param {string} type - 'success', 'error', or 'info'.
+     */
+    function showLocationMessage(message, type) {
+        locationStatusMessage.textContent = message;
+        locationStatusMessage.classList.remove('text-green-700', 'text-red-700', 'text-gray-600');
+        if (type === 'success') {
+            locationStatusMessage.classList.add('text-green-700');
+        } else if (type === 'error') {
+            locationStatusMessage.classList.add('text-red-700');
+        } else {
+            locationStatusMessage.classList.add('text-gray-600');
+        }
+        setTimeout(() => {
+            locationStatusMessage.textContent = '';
+        }, 5000);
+    }
+
+    /**
+     * Populates the location input fields with given node data.
+     * Called from marker popups and dropdown selection.
+     * @param {string} nodeId - The ID of the node.
+     * @param {number} lat - Latitude.
+     * @param {number} lon - Longitude.
+     */
+    window.populateLocationInputs = function(nodeId, lat, lon) {
+        latitudeInput.value = lat.toFixed(6);
+        longitudeInput.value = lon.toFixed(6);
+        map.closePopup(); // Close any open popups
+        // Set the dropdown to the selected node, if it exists
+        if (activeNodeSelect.value !== nodeId) {
+            activeNodeSelect.value = nodeId;
+        }
+    };
+
+    /**
+     * Handles the change event for the active node dropdown.
+     * Populates input fields with selected node's data.
+     */
+    function onActiveNodeSelectChange() {
+        const selectedNodeId = activeNodeSelect.value;
+        if (selectedNodeId && activeNodesData[selectedNodeId]) {
+            const node = activeNodesData[selectedNodeId];
+            const lat = node.latitude;
+            const lon = node.longitude;
+            populateLocationInputs(selectedNodeId, lat, lon);
+        } else {
+            // Clear inputs if "Select a node" or an invalid option is chosen
+            latitudeInput.value = '';
+            longitudeInput.value = '';
+        }
+    }
+
+    /**
+     * Sends a request to the Flask backend to set or update a node's location.
+     */
+    async function setNodeLocation() {
+        const nodeId = activeNodeSelect.value; // Get Node ID from dropdown
+        const latitude = parseFloat(latitudeInput.value);
+        const longitude = parseFloat(longitudeInput.value);
+
+        if (!nodeId) {
+            showLocationMessage('Please select a Node ID from the dropdown.', 'error');
+            return;
+        }
+        if (isNaN(latitude) || isNaN(longitude)) {
+            showLocationMessage('Please enter valid Latitude and Longitude.', 'error');
+            return;
+        }
+
+        showLocationMessage(`Setting location for Node ${nodeId}...`, 'info');
+
+        try {
+            const response = await fetch(SET_LOCATION_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    nodeId: nodeId,
+                    latitude: latitude,
+                    longitude: longitude
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.status === 'success') {
+                showLocationMessage(`Location for Node ${nodeId} set successfully!`, 'success');
+                // Trigger a data fetch to update the map immediately
+                fetchNodeLocations();
+            } else {
+                showLocationMessage(`Failed to set location: ${result.message || 'Unknown error'}`, 'error');
+            }
+        }
+        catch (error) {
+            console.error('Error setting node location:', error);
+            showLocationMessage('Network error: Could not reach backend to set location.', 'error');
+        }
+    }
+
+    /**
+     * Fetches live node data and updates markers on the map.
+     * This function now intelligently updates existing markers and adds/removes as needed,
+     * to preserve popup state.
+     */
+    async function fetchNodeLocations() {
+        isUpdatingMap = true; // Set flag to indicate map update is in progress
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            const fetchedNodesData = data.nodes; // Contains only CURRENTLY ACTIVE nodes from backend
+
+            const newActiveNodeIds = new Set(Object.keys(fetchedNodesData));
+            const markersToDeactivate = [];
+            const markersToReallyRemove = [];
+
+            // Identify markers to deactivate or remove
+            for (const nodeId in nodeMarkers) {
+                if (!newActiveNodeIds.has(nodeId)) {
+
+                    if (activeNodesData[nodeId] && activeNodesData[nodeId].isActive) {
+                        // If it was previously active, now it's inactive. Mark for deactivation.
+                        markersToDeactivate.push(nodeMarkers[nodeId]);
+                    } else {
+                        // Node is completely gone, mark for removal
+                        markersToReallyRemove.push(nodeMarkers[nodeId]);
+                        delete nodeMarkers[nodeId]; // Remove from our local tracking
+                    }
+                }
+            }
+
+            // Remove markers that are truly gone from the map
+            if (markersToReallyRemove.length > 0) {
+                markers.removeLayers(markersToReallyRemove);
+            }
+
+            // Update existing markers or create new ones for fetched (active) nodes
+            for (const nodeId in fetchedNodesData) {
+                const nodeData = fetchedNodesData[nodeId];
+                let marker = nodeMarkers[nodeId]; // Get existing marker reference
+
+                let lat = nodeData.latitude;
+                let lon = nodeData.longitude;
+
+                // Fallback for coordinates if somehow missing in active data
+                if (lat === undefined || lat === null || lon === undefined || lon === null) {
+                    if (marker) {
+                        const existingLatLng = marker.getLatLng();
+                        lat = existingLatLng.lat;
+                        lon = existingLatLng.lng;
+                    } else {
+                        console.warn(`Active Node ${nodeId} from API has missing coordinates and no prior marker. Defaulting to [0,0].`);
+                        lat = 0;
+                        lon = 0;
+                    }
+                }
+
+                const updatedNodeData = {
+                    nodeId: nodeId,
+                    ...nodeData,
+                    latitude: lat,
+                    longitude: lon,
+                    isActive: true // Explicitly mark as active
+                };
+
+                if (marker) {
+                    // Marker exists, update its properties
+                    marker.setLatLng([lat, lon]);
+                    marker.setIcon(createNodeIcon(nodeId, nodeData.warning_level_text, true));
+                    marker.options.nodeData = updatedNodeData;
+                    // Only update popup content if the popup is currently open
+                    if (marker.getPopup() && marker.isPopupOpen()) {
+                        marker.setPopupContent(getNodePopupContent(updatedNodeData));
+                    }
+                } else {
+                    // New marker, create and add it
+                    marker = L.marker([lat, lon], {
+                        icon: createNodeIcon(nodeId, nodeData.warning_level_text, true),
+                        nodeData: updatedNodeData // Store full data
+                    });
+                    // Bind an empty popup initially. Content will be set on popupopen.
+                    marker.bindPopup('', { autoClose: false, closeOnClick: false });
+
+                    // Handle hover for individual node popups
+                    marker.on('mouseover', function() {
+                        // Close any open cluster popup first
+                        if (currentOpenPopupType === 'cluster' && currentOpenPopupId) {
+                            map.closePopup();
+                            currentOpenPopupId = null;
+                            currentOpenPopupType = null;
+                            trackedClusterMarkerId = null;
+                        }
+                        // If this node's popup isn't already open, open it
+                        if (!this.isPopupOpen()) {
+                            this.setPopupContent(getNodePopupContent(this.options.nodeData));
+                            this.openPopup();
+                            currentOpenPopupId = this.options.nodeData.nodeId;
+                            currentOpenPopupType = 'node';
+                        }
+                    });
+
+                    marker.on('mouseout', function() {
+                        // Only close if it's the currently open popup and it was opened by hover (not click)
+                        if (!isUpdatingMap && this.isPopupOpen() && this.options.nodeData.nodeId === currentOpenPopupId && !this._wasClicked) {
+                            this.closePopup();
+                            // currentOpenPopupId and currentOpenPopupType will be cleared by map.on('popupclose')
+                        }
+                    });
+
+                    // Handle click for individual node popups (still opens/re-opens)
+                    marker.on('click', function() {
+                        // Close any open cluster popup first
+                        if (currentOpenPopupType === 'cluster' && currentOpenPopupId) {
+                            map.closePopup();
+                            currentOpenPopupId = null;
+                            currentOpenPopupType = null;
+                            trackedClusterMarkerId = null;
+                        }
+                        // On click, ensure content is fresh before opening
+                        this.setPopupContent(getNodePopupContent(this.options.nodeData));
+                        currentOpenPopupId = this.options.nodeData.nodeId; // Track node popup
+                        currentOpenPopupType = 'node';
+                        this._wasClicked = true; // Mark that this popup was opened by a click
+                        this.openPopup();
+                    });
+                    markers.addLayer(marker); // Add new marker to cluster group
+                    nodeMarkers[nodeId] = marker; // Store reference
+                }
+            }
+
+            // Process markers that are now inactive
+            for (const marker of markersToDeactivate) {
+                const nodeId = marker.options.nodeData.nodeId;
+                const inactiveNodeData = { ...marker.options.nodeData, isActive: false };
+                marker.setIcon(createNodeIcon(nodeId, 'Low', false)); // Set to inactive style
+                marker.options.nodeData = inactiveNodeData;
+                if (marker.isPopupOpen()) {
+                    marker.closePopup(); // Close popup if an inactive node's popup was open
+                }
+                // Update popup content for inactive state if needed later, will be generated on next click
+                marker.setPopupContent(getNodePopupContent(inactiveNodeData));
+            }
+
+
+            // Rebuild the global activeNodesData from the current state of nodeMarkers
+            activeNodesData = {};
+            for (const nodeId in nodeMarkers) {
+                activeNodesData[nodeId] = nodeMarkers[nodeId].options.nodeData;
+            }
+
+            // Update the active node dropdown
+            const currentSelectedNodeId = activeNodeSelect.value;
+            activeNodeSelect.innerHTML = '<option value="">-- Select a node --</option>'; // Changed text
+            let foundSelected = false;
+
+            // Populate dropdown with all known nodes (active and inactive) from activeNodesData
+            const sortedKnownNodeIds = Array.from(Object.keys(activeNodesData)).sort();
+
+            for (const nodeId of sortedKnownNodeIds) {
+                const nodeDataForDropdown = activeNodesData[nodeId];
+                if (nodeDataForDropdown) {
+                    const option = document.createElement('option');
+                    option.value = nodeId;
+                    option.textContent = `Node ${nodeId} (${nodeDataForDropdown.isActive ? 'Active' : 'Inactive'})`;
+                    activeNodeSelect.appendChild(option);
+                    if (nodeId === currentSelectedNodeId) {
+                        foundSelected = true;
+                    }
+                }
+            }
+            if (foundSelected) {
+                activeNodeSelect.value = currentSelectedNodeId;
+            } else {
+                activeNodeSelect.value = '';
+            }
+
+            // --- START: MODIFIED POPUP RE-OPENING LOGIC ---
+            // Add a delay to allow Leaflet.markercluster to finish its rendering
+            setTimeout(() => {
+                if (currentOpenPopupType === 'node' && currentOpenPopupId && nodeMarkers[currentOpenPopupId]) {
+                    const marker = nodeMarkers[currentOpenPopupId];
+                    // Only re-open if it was clicked to stay open
+                    if (marker && !marker.isPopupOpen() && marker._wasClicked) {
+                        marker.setPopupContent(getNodePopupContent(marker.options.nodeData));
+                        marker.openPopup();
+                    }
+                } else if (currentOpenPopupType === 'cluster' && trackedClusterMarkerId) {
+                    const referenceMarker = nodeMarkers[trackedClusterMarkerId];
+                    if (referenceMarker) {
+                        // Use the markerClusterGroup's internal method to find the marker's current parent cluster
+                        const parentCluster = markers.getVisibleParent(referenceMarker);
+
+                        if (parentCluster) {
+                            // If the cluster is found, update its content and ensure its popup is open
+                            if (!parentCluster.isPopupOpen()) {
+                                parentCluster.setPopupContent(generateClusterPopupContent(parentCluster));
+                                parentCluster.openPopup();
+                            } else {
+                                // If already open, just refresh content to be safe
+                                parentCluster.setPopupContent(generateClusterPopupContent(parentCluster));
+                            }
+                            // Update the temporary ID to the new cluster's LatLng for consistency
+                            currentOpenPopupId = parentCluster.getLatLng().toString();
+                        } else {
+                            // The reference marker is no longer in a cluster (it's visible on its own)
+                            currentOpenPopupId = null;
+                            currentOpenPopupType = null;
+                            trackedClusterMarkerId = null;
+                        }
+                    } else {
+                        // The reference marker itself is gone
+                        currentOpenPopupId = null;
+                        currentOpenPopupType = null;
+                        trackedClusterMarkerId = null;
+                    }
+                }
+            }, 200); // 200ms delay
+            // --- END: MODIFIED POPUP RE-OPENING LOGIC ---
+
+        } catch (error) {
+            console.error('Error fetching live node locations:', error);
+            showLocationMessage('Error fetching node data. Check console for details.', 'error');
+        } finally {
+            isUpdatingMap = false; // Reset flag after update is complete
+        }
+    }
+
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchNodeLocations(); // Initial fetch to populate markers and dropdown
+        setInterval(fetchNodeLocations, FETCH_INTERVAL_MS); // Continue fetching to update markers and dropdown
+
+        setNodeLocationBtn.addEventListener('click', setNodeLocation);
+        activeNodeSelect.addEventListener('change', onActiveNodeSelectChange); // Listen for dropdown changes
+
+        // Map click event to populate coordinates
+        map.on('click', function(e) {
+            latitudeInput.value = e.latlng.lat.toFixed(6);
+            longitudeInput.value = e.latlng.lng.toFixed(6);
+            showLocationMessage(`Clicked: Lat ${e.latlng.lat.toFixed(6)}, Lon ${e.latlng.lng.toFixed(6)}`, 'info');
+        });
+
+        // --- START: HOVER-BASED CLUSTER POPUP HANDLERS ---
+        markers.on('clustermouseover', function (a) {
+            const cluster = a.layer;
+            const childMarkers = cluster.getAllChildMarkers();
+
+            // Close any open node popup first
+            if (currentOpenPopupType === 'node' && currentOpenPopupId && nodeMarkers[currentOpenPopupId] && nodeMarkers[currentOpenPopupId].isPopupOpen()) {
+                nodeMarkers[currentOpenPopupId].closePopup();
+                // currentOpenPopupId and currentOpenPopupType will be cleared by map.on('popupclose')
+            }
+
+            if (childMarkers.length > 0) {
+                // Use the first child's nodeId as a stable reference to find this cluster later
+                trackedClusterMarkerId = childMarkers[0].options.nodeData.nodeId;
+            } else {
+                trackedClusterMarkerId = null;
+            }
+
+            currentOpenPopupId = cluster.getLatLng().toString(); // Use LatLng as a temporary ID for the popup instance
+            currentOpenPopupType = 'cluster';
+
+            // Open popup on the cluster with persistence options
+            cluster.bindPopup(generateClusterPopupContent(cluster), { autoClose: false, closeOnClick: false }).openPopup();
+        });
+
+        markers.on('clustermouseout', function (a) {
+            // When the mouse leaves, close the popup. The 'popupclose' event will handle clearing the tracking variables.
+            a.layer.closePopup();
+        });
+        // --- END: HOVER-BASED CLUSTER POPUP HANDLERS ---
+
+        // --- START: CLICK-BASED CLUSTER ZOOM HANDLER ---
+        // When a cluster is clicked, zoom to its bounds to reveal individual markers.
+        markers.on('clusterclick', function (a) {
+            const cluster = a.layer;
+            map.closePopup(); // Close any open popup
+            // Use zoomToBounds for consistency with zoom.txt
+            cluster.zoomToBounds();
+        });
+        // --- END: CLICK-BASED CLUSTER ZOOM HANDLER ---
+
+        // --- START: MODIFIED POPUP CLOSE HANDLER ---
+        map.on('popupclose', function(e) {
+            // Only reset tracking if the map is NOT in the middle of an update cycle.
+            // This prevents the automatic close during a refresh from clearing our tracking state.
+            if (!isUpdatingMap) {
+                const closedPopupSource = e.popup._source;
+                // Check if the closed popup was a node we were tracking
+                if (currentOpenPopupType === 'node' && closedPopupSource && closedPopupSource.options.nodeData && closedPopupSource.options.nodeData.nodeId === currentOpenPopupId) {
+                    // Reset the _wasClicked flag when the node popup is closed
+                    if (closedPopupSource._wasClicked) {
+                        closedPopupSource._wasClicked = false;
+                    }
+                    currentOpenPopupId = null;
+                    currentOpenPopupType = null;
+                    trackedClusterMarkerId = null; // Reset all tracking
+                } 
+                // Check if the closed popup was a cluster we were tracking
+                else if (currentOpenPopupType === 'cluster' && closedPopupSource && closedPopupSource.getChildCount) { // A simple check to see if it's a cluster
+                     currentOpenPopupId = null;
+                     currentOpenPopupType = null;
+                     trackedClusterMarkerId = null; // Reset all tracking
+                }
+            }
+        });
+        // --- END: MODIFIED POPUP CLOSE HANDLER ---
+    });
+  </script>
+</body>
+</html>
