@@ -723,28 +723,25 @@ def map_page():
     print("DEBUG: Serving map.html from templates folder...")
     return render_template('map.html')
 
-# --- Function to setup background tasks ---
-# This function will be called directly when the Flask app is loaded by Gunicorn.
-def setup_background_tasks():
-    global data_fetch_thread # Declare as global if you need to reference it outside this function
-    print("INFO: Calling setup_background_tasks(). Loading models and starting data fetch thread.")
+# --- Main Execution Block ---
+if __name__ == '__main__':
+    print("INFO: Running Flask app in local development mode (via __main__).")
     load_ml_models() # Load models once at startup
     data_fetch_thread = threading.Thread(target=fetch_data_from_esp32, daemon=True)
     data_fetch_thread.start()
     print("INFO: Data fetching and ML processing thread started.")
+
     # Register close_csv_logger to be called when the app shuts down
     atexit.register(close_csv_logger)
     print("INFO: CSV logger cleanup registered with atexit.")
 
-# Call the setup function when the module is imported (e.g., by Gunicorn)
-setup_background_tasks()
-
-# --- Main Execution Block (for local development only) ---
-if __name__ == '__main__':
-    print("INFO: Running Flask app in local development mode (via __main__).")
-    # This block is for local testing with `python app.py`.
-    # In Render, Gunicorn handles the app startup, so the thread is started via setup_background_tasks()
-    # If you run locally using `python app.py`, the setup_background_tasks() will still run.
+    # In a Render deployment, this `app.run()` block is typically NOT used.
+    # Render uses a WSGI server like Gunicorn (configured via a `Procfile`)
+    # to run your Flask application in production.
+    # The `Procfile` should look something like: `web: gunicorn app:app`
+    # (assuming your Flask app instance is named `app` in `app.py`).
+    # For local testing, ensure your ESP32 is accessible at the Cloudflare Tunnel URL.
     port = int(os.environ.get('PORT', 5000)) # Use Render's PORT env var if available, else 5000
     print(f"INFO: Starting Flask app on http://0.0.0.0:{port} (debug=True for local).")
     app.run(host='0.0.0.0', port=port, debug=True)
+
