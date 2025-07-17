@@ -511,30 +511,30 @@
             overallSensorMetricsDiv.innerHTML = `
                 <div class="p-3 bg-blue-50 rounded-lg shadow-sm">
                     <p class="text-sm text-blue-700 font-semibold">Rain</p>
-                    <p class="text-xl font-bold text-blue-900">${latestData.rain !== null && latestData.rain !== undefined ? latestData.rain.toFixed(0) : 'N/A'}</p>
+                    <p class="text-xl font-bold text-blue-900">${latestData.rain !== undefined ? latestData.rain.toFixed(0) : 'N/A'}</p>
                 </div>
                 <div class="p-3 bg-green-50 rounded-lg shadow-sm">
                     <p class="text-sm text-green-700 font-semibold">Soil Moisture</p>
-                    <p class="text-xl font-bold text-green-900">${latestData.soil !== null && latestData.soil !== undefined ? latestData.soil.toFixed(0) : 'N/A'}</p>
+                    <p class="text-xl font-bold text-green-900">${latestData.soil !== undefined ? latestData.soil.toFixed(0) : 'N/A'}</p>
                 </div>
                 <div class="p-3 bg-red-50 rounded-lg shadow-sm">
                     <p class="text-sm text-red-700 font-semibold">Vibration (g)</p>
-                    <p class="text-xl font-bold text-red-900">${latestData.vibration !== null && latestData.vibration !== undefined ? latestData.vibration.toFixed(3) : 'N/A'}g</p>
+                    <p class="text-xl font-bold text-red-900">${latestData.vibration !== undefined ? latestData.vibration.toFixed(3) : 'N/A'}g</p>
                 </div>
             `;
 
             overallAnomalyMetricsDiv.innerHTML = `
                 <div class="p-3 bg-violet-50 rounded-lg shadow-sm">
                     <p class="text-sm text-violet-700 font-semibold">IF Score</p>
-                    <p class="text-xl font-bold text-violet-900">${latestData.iso_score !== null && latestData.iso_score !== undefined ? latestData.iso_score.toFixed(3) : 'N/A'}</p>
+                    <p class="text-xl font-bold text-violet-900">${latestData.iso_score !== undefined && latestData.iso_score !== null ? latestData.iso_score.toFixed(3) : 'N/A'}</p>
                 </div>
                 <div class="p-3 bg-pink-50 rounded-lg shadow-sm">
                     <p class="text-sm text-pink-700 font-semibold">HST Score</p>
-                    <p class="text-xl font-bold text-pink-900">${latestData.river_score !== null && latestData.river_score !== undefined ? latestData.river_score.toFixed(3) : 'N/A'}</p>
+                    <p class="text-xl font-bold text-pink-900">${latestData.river_score !== undefined && latestData.river_score !== null ? latestData.river_score.toFixed(3) : 'N/A'}</p>
                 </div>
                 <div class="p-3 bg-orange-50 rounded-lg shadow-sm">
                     <p class="text-sm text-orange-700 font-semibold">Warning Level</p>
-                    <p class="text-xl font-bold text-orange-900">${latestData.warning_level_numerical !== null && latestData.warning_level_numerical !== undefined ? latestData.warning_level_numerical.toFixed(3) : 'N/A'}</p>
+                    <p class="text-xl font-bold text-orange-900">${latestData.warning_level_numerical !== undefined && latestData.warning_level_numerical !== null ? latestData.warning_level_numerical.toFixed(3) : 'N/A'}</p>
                 </div>
             `;
         }
@@ -677,7 +677,9 @@
             // Update Sensor Chart
             if (individualChartInstances[`sensor_${nodeId}`]) {
                 const updateSensor = {
-                    x: [[nodeData.timestamps[nodeData.timestamps.length - 1]]],
+                    x: [[nodeData.timestamps[nodeData.timestamps.length - 1]],
+                        [nodeData.timestamps[nodeData.timestamps.length - 1]],
+                        [nodeData.timestamps[nodeData.timestamps.length - 1]]],
                     y: [[nodeData.rain[nodeData.rain.length - 1]],
                         [nodeData.soil[nodeData.soil.length - 1]],
                         [nodeData.vibration[nodeData.vibration.length - 1]]]
@@ -824,31 +826,31 @@
                 nodeMetricsDiv.innerHTML = `
                     <div class="p-2 bg-blue-50 rounded-md text-sm">
                         <p class="text-blue-700 font-semibold">Rain:</p>
-                        <p class="text-blue-900 font-bold">${latestData.rain !== null && latestData.rain !== undefined ? latestData.rain.toFixed(0) : 'N/A'}</p>
+                        <p class="text-blue-900 font-bold">${latestData.rain !== undefined ? latestData.rain.toFixed(0) : 'N/A'}</p>
                     </div>
                     <div class="p-2 bg-green-50 rounded-md text-sm">
                         <p class="text-green-700 font-semibold">Soil:</p>
-                        <p class="text-green-900 font-bold">${latestData.soil !== null && latestData.soil !== undefined ? latestData.soil.toFixed(0) : 'N/A'}</p>
+                        <p class="text-green-900 font-bold">${latestData.soil !== undefined ? latestData.soil.toFixed(0) : 'N/A'}</p>
                     </div>
                     <div class="p-2 bg-red-50 rounded-md text-sm">
                         <p class="text-red-700 font-semibold">Vib (g):</p>
-                        <p class="text-red-900 font-bold">${latestData.vibration !== null && latestData.vibration !== undefined ? latestData.vibration.toFixed(3) : 'N/A'}g</p>
+                        <p class="text-red-900 font-bold">${latestData.vibration !== undefined ? latestData.vibration.toFixed(3) : 'N/A'}g</p>
                     </div>
                     <div class="p-2 bg-orange-50 rounded-md text-sm">
                         <p class="text-orange-700 font-semibold">Tilt:</p>
-                        <p class="text-orange-900 font-bold">${latestData.tilt !== null && latestData.tilt !== undefined ? latestData.tilt.toFixed(1) : 'N/A'}°</p>
+                        <p class="text-orange-900 font-bold">${latestData.tilt !== undefined ? latestData.tilt.toFixed(1) : 'N/A'}°</p>
                     </div>
                     <div class="p-2 bg-violet-50 rounded-md text-sm">
                         <p class="text-violet-700 font-semibold">IF Score:</p>
-                        <p class="text-violet-900 font-bold">${latestData.iso_score !== null && latestData.iso_score !== undefined ? latestData.iso_score.toFixed(3) : 'N/A'}</p>
+                        <p class="text-violet-900 font-bold">${latestData.iso_score !== undefined && latestData.iso_score !== null ? latestData.iso_score.toFixed(3) : 'N/A'}</p>
                     </div>
                     <div class="p-2 bg-pink-50 rounded-md text-sm">
                         <p class="text-pink-700 font-semibold">HST Score:</p>
-                        <p class="text-pink-900 font-bold">${latestData.river_score !== null && latestData.river_score !== undefined ? latestData.river_score.toFixed(3) : 'N/A'}</p>
+                        <p class="text-pink-900 font-bold">${latestData.river_score !== undefined && latestData.river_score !== null ? latestData.river_score.toFixed(3) : 'N/A'}</p>
                     </div>
                     <div class="p-2 bg-orange-50 rounded-md text-sm">
                         <p class="text-orange-700 font-semibold">Warning:</p>
-                        <p class="text-orange-900 font-bold">${latestData.warning_level_numerical !== null && latestData.warning_level_numerical !== undefined ? latestData.warning_level_numerical.toFixed(3) : 'N/A'}</p>
+                        <p class="text-orange-900 font-bold">${latestData.warning_level_numerical !== undefined && latestData.warning_level_numerical !== null ? latestData.warning_level_numerical.toFixed(3) : 'N/A'}</p>
                     </div>
                 `;
             }
@@ -890,13 +892,13 @@
                             <td>${nodeId}</td>
                             <td>${timestamp}</td>
                             <td>${node.mac || 'N/A'}</td>
-                            <td>${node.rain !== null && node.rain !== undefined ? node.rain.toFixed(0) : 'N/A'}</td>
-                            <td>${node.soil !== null && node.soil !== undefined ? node.soil.toFixed(0) : 'N/A'}</td>
-                            <td>${node.vibration !== null && node.vibration !== undefined ? node.vibration.toFixed(3) : 'N/A'}</td>
-                            <td>${node.tilt !== null && node.tilt !== undefined ? node.tilt.toFixed(1) : 'N/A'}</td>
-                            <td>${node.iso_score !== null && node.iso_score !== undefined ? node.iso_score.toFixed(3) : 'N/A'}</td>
-                            <td>${node.river_score !== null && node.river_score !== undefined ? node.river_score.toFixed(3) : 'N/A'}</td>
-                            <td>${node.warning_level_numerical !== null && node.warning_level_numerical !== undefined ? node.warning_level_numerical.toFixed(3) : 'N/A'}</td>
+                            <td>${node.rain !== undefined ? node.rain.toFixed(0) : 'N/A'}</td>
+                            <td>${node.soil !== undefined ? node.soil.toFixed(0) : 'N/A'}</td>
+                            <td>${node.vibration !== undefined ? node.vibration.toFixed(3) : 'N/A'}</td>
+                            <td>${node.tilt !== undefined ? node.tilt.toFixed(1) : 'N/A'}</td>
+                            <td>${node.iso_score !== undefined && node.iso_score !== null ? node.iso_score.toFixed(3) : 'N/A'}</td>
+                            <td>${node.river_score !== undefined && node.river_score !== null ? node.river_score.toFixed(3) : 'N/A'}</td>
+                            <td>${node.warning_level_numerical !== undefined && node.warning_level_numerical !== null ? node.warning_level_numerical.toFixed(3) : 'N/A'}</td>
                         </tr>
                     `;
                 });
@@ -1175,37 +1177,28 @@
 
                 // Process Overall Sensor Data
                 const timestamp = new Date(data.timestamp);
-                // Only push data if it's not null/undefined
-                if (data.overall_data && data.overall_data.rain !== null && data.overall_data.rain !== undefined) {
-                    overallSensorData.timestamps.push(timestamp);
-                    overallSensorData.rain.push(data.overall_data.rain);
-                    overallSensorData.soil.push(data.overall_data.soil);
-                    overallSensorData.vibration.push(data.overall_data.vibration);
-                    overallSensorData.iso_score.push(data.overall_data.iso_score);
-                    overallSensorData.river_score.push(data.overall_data.river_score);
-                    overallSensorData.warning_level_numerical.push(data.overall_data.warning_level_numerical);
+                overallSensorData.timestamps.push(timestamp);
+                overallSensorData.rain.push(data.overall_data.rain);
+                overallSensorData.soil.push(data.overall_data.soil);
+                overallSensorData.vibration.push(data.overall_data.vibration);
+                overallSensorData.iso_score.push(data.overall_data.iso_score); // New
+                overallSensorData.river_score.push(data.overall_data.river_score); // New
+                overallSensorData.warning_level_numerical.push(data.overall_data.warning_level_numerical); // New
 
-                    // Trim old data to maintain MAX_DATA_POINTS
-                    if (overallSensorData.timestamps.length > MAX_DATA_POINTS) {
-                        overallSensorData.timestamps.shift();
-                        overallSensorData.rain.shift();
-                        overallSensorData.soil.shift();
-                        overallSensorData.vibration.shift();
-                        overallSensorData.iso_score.shift();
-                        overallSensorData.river_score.shift();
-                        overallSensorData.warning_level_numerical.shift();
-                    }
-                    updateOverallSensorChart();
-                    updateOverallAnomalyCharts();
-                    updateOverallMetrics(data.overall_data);
-                } else {
-                    // If overall_data is null or its properties are null, ensure metrics display N/A
-                    updateOverallMetrics({
-                        rain: null, soil: null, vibration: null, tilt: null,
-                        iso_score: null, river_score: null, warning_level_numerical: null
-                    });
+                // Trim old data to maintain MAX_DATA_POINTS
+                if (overallSensorData.timestamps.length > MAX_DATA_POINTS) {
+                    overallSensorData.timestamps.shift();
+                    overallSensorData.rain.shift();
+                    overallSensorData.soil.shift();
+                    overallSensorData.vibration.shift();
+                    overallSensorData.iso_score.shift(); // New
+                    overallSensorData.river_score.shift(); // New
+                    overallSensorData.warning_level_numerical.shift(); // New
                 }
 
+                updateOverallSensorChart();
+                updateOverallAnomalyCharts(); // New
+                updateOverallMetrics(data.overall_data);
 
                 // Process Individual Node Data
                 manageIndividualNodeDisplays(data.nodes); // Add/remove node cards as needed
@@ -1224,35 +1217,26 @@
                         };
                     }
 
-                    // Only push data if it's not null/undefined
-                    if (nodeData.rain !== null && nodeData.rain !== undefined) {
-                        individualNodeData[nodeId].timestamps.push(nodeTimestamp);
-                        individualNodeData[nodeId].rain.push(nodeData.rain);
-                        individualNodeData[nodeId].soil.push(nodeData.soil);
-                        individualNodeData[nodeId].vibration.push(nodeData.vibration);
-                        individualNodeData[nodeId].iso_score.push(nodeData.iso_score);
-                        individualNodeData[nodeId].river_score.push(nodeData.river_score);
-                        individualNodeData[nodeId].warning_level_numerical.push(nodeData.warning_level_numerical);
+                    individualNodeData[nodeId].timestamps.push(nodeTimestamp);
+                    individualNodeData[nodeId].rain.push(nodeData.rain);
+                    individualNodeData[nodeId].soil.push(nodeData.soil);
+                    individualNodeData[nodeId].vibration.push(nodeData.vibration);
+                    individualNodeData[nodeId].iso_score.push(nodeData.iso_score); // New
+                    individualNodeData[nodeId].river_score.push(nodeData.river_score); // New
+                    individualNodeData[nodeId].warning_level_numerical.push(nodeData.warning_level_numerical); // New
 
-                        // Trim old data for individual node
-                        if (individualNodeData[nodeId].timestamps.length > MAX_DATA_POINTS) {
-                            individualNodeData[nodeId].timestamps.shift();
-                            individualNodeData[nodeId].rain.shift();
-                            individualNodeData[nodeId].soil.shift();
-                            individualNodeData[nodeId].vibration.shift();
-                            individualNodeData[nodeId].iso_score.shift();
-                            individualNodeData[nodeId].river_score.shift();
-                            individualNodeData[nodeId].warning_level_numerical.shift();
-                        }
-                        updateIndividualNodeChart(nodeId);
-                        updateIndividualNodeMetrics(nodeId, nodeData);
-                    } else {
-                         // If node data is null, ensure metrics display N/A
-                         updateIndividualNodeMetrics(nodeId, {
-                            rain: null, soil: null, vibration: null, tilt: null,
-                            iso_score: null, river_score: null, warning_level_numerical: null
-                        });
+                    // Trim old data for individual node
+                    if (individualNodeData[nodeId].timestamps.length > MAX_DATA_POINTS) {
+                        individualNodeData[nodeId].timestamps.shift();
+                        individualNodeData[nodeId].rain.shift();
+                        individualNodeData[nodeId].soil.shift();
+                        individualNodeData[nodeId].vibration.shift();
+                        individualNodeData[nodeId].iso_score.shift(); // New
+                        individualNodeData[nodeId].river_score.shift(); // New
+                        individualNodeData[nodeId].warning_level_numerical.shift(); // New
                     }
+                    updateIndividualNodeChart(nodeId);
+                    updateIndividualNodeMetrics(nodeId, nodeData);
                 }
                 updateActiveNodesList(activeNodeIds);
 
@@ -1261,17 +1245,6 @@
                 setConnectionStatus(false, 'Disconnected from Backend');
                 lastUpdateTimeSpan.textContent = 'Error fetching data';
                 // Optionally, clear charts or show error message on UI
-                updateOverallMetrics({
-                    rain: null, soil: null, vibration: null, tilt: null,
-                    iso_score: null, river_score: null, warning_level_numerical: null
-                });
-                updateNodeDataTable({});
-                updateActiveNodesList([]);
-                individualNodesContainer.innerHTML = `
-                    <div class="p-4 bg-gray-50 rounded-lg text-center text-red-500 border border-gray-200">
-                        Error loading individual node data. Please check backend logs.
-                    </div>
-                `;
             }
         }
 
