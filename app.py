@@ -296,7 +296,7 @@ def process_incoming_data(esp32_nodes_data):
                     river_model.learn_one(river_input)
 
                     warning_level_numerical, warning_level_text = get_warning_level(iso_score, river_score)
-                    print(f"DEBUG: Node {node_id} - Final Warning Level: Numerical={warning_level_numerical}, Text={warning_level_text}")
+                    print(f"DEBUG: Node {node_id} - Final Warning Level: Numerical={warning_level_numerical}, Text={text_level}")
                 else:
                     print(f"WARNING: Skipping anomaly detection for Node {node_id} due to missing data or unloaded models.")
 
@@ -486,10 +486,62 @@ def set_node_location():
     return jsonify({"status": "success", "message": f"Location for Node {node_id} set successfully."})
 
 
-# All other routes (/api/set_mode, /api/start_csv_logging, etc.) and
-# the frontend page routes (/, /dashboard, etc.) remain unchanged.
-# For brevity, they are not repeated here. Assume they are present.
-# ...
+@app.route('/api/set_mode', methods=['POST'])
+def set_mode():
+    data = request.get_json()
+    mode = data.get('mode')
+    
+    # This function now only affects the Flask app's state, as it can't reach the ESP32 directly.
+    # It's kept for potential future use or to control server-side logic (like logging).
+    
+    if mode not in ['data_collection', 'standby']:
+        return jsonify({"status": "error", "message": "Invalid mode specified"}), 400
+        
+    print(f"INFO: /api/set_mode called. Clearing data stores for mode change simulation.")
+    with data_lock:
+        overall_historical_data.clear()
+        latest_node_data.clear()
+        user_defined_node_locations.clear()
+        global river_model
+        river_model = anomaly.HalfSpaceTrees(seed=42)
+    print("INFO: Data stores cleared and River model re-initialized.")
+    return jsonify({"status": "success", "message": f"Flask server state reset for {mode} mode."})
+
+
+@app.route('/api/start_csv_logging', methods=['POST'])
+def start_csv_logging():
+    """API endpoint to start CSV logging."""
+    global is_logging_active
+    if is_logging_active:
+        return jsonify({"status": "info", "message": "CSV logging is already active."})
+    
+    if init_csv_logger():
+        return jsonify({"status": "success", "message": "CSV logging started."})
+    else:
+        return jsonify({"status": "error", "message": "Failed to start CSV logging."}), 500
+
+@app.route('/api/stop_csv_logging', methods=['POST'])
+def stop_csv_logging():
+    """API endpoint to stop CSV logging."""
+    global is_logging_active
+    if not is_logging_active:
+        return jsonify({"status": "info", "message": "CSV logging is not active."})
+
+    close_csv_logger()
+    return jsonify({"status": "success", "message": "CSV logging stopped."})
+
+@app.route('/api/download_csv')
+def download_csv():
+    """API endpoint to download the current CSV log file."""
+    global current_csv_file_path
+    if current_csv_file_path and os.path.exists(current_csv_file_path):
+        close_csv_logger() # Ensure the file is closed before sending
+        directory = os.path.dirname(current_csv_file_path)
+        filename = os.path.basename(current_csv_file_path)
+        print(f"Attempting to send file: {filename} from directory: {directory}")
+        return send_from_directory(directory, filename, as_attachment=True)
+    else:
+        return jsonify({"status": "error", "message": "No CSV file available for download or file not found."}), 404
 
 # --- Routes for Frontend Pages ---
 @app.route('/')
