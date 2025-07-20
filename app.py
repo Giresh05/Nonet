@@ -22,7 +22,7 @@ print(f"Flask app initialized with static_folder='{app.static_folder}' and templ
 # --- Configuration ---
 # The API key to secure the new data submission endpoint.
 # Set this in your Render environment variables.
-API_SECRET_KEY = os.environ.get('API_SECRET_KEY')
+API_SECRET_KEY = "SensorNet_Alpha_77!"
 if not API_SECRET_KEY:
     print("WARNING: API_SECRET_KEY environment variable not set. The /api/submit_data endpoint is insecure.")
 
