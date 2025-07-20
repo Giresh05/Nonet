@@ -27,7 +27,7 @@ print(f"Flask app initialized with static_folder='{app.static_folder}' and templ
 # without a persistent named tunnel, this URL will change.
 # Render's server needs to be able to reach this URL to fetch data from your ESP32.
 # You MUST ensure this URL is up-to-date and accessible from Render's network.
-CLOUDFARE_TUNNEL_BASE_URL = os.environ.get('CLOUDFARE_TUNNEL_BASE_URL', 'https://iso-bob-reseller-somebody.trycloudflare.com')
+CLOUDFARE_TUNNEL_BASE_URL = os.environ.get('CLOUDFARE_TUNNEL_BASE_URL', 'https://restrict-cake-talking-mild.trycloudflare.com')
 print(f"Configured CLOUDFARE_TUNNEL_BASE_URL: {CLOUDFARE_TUNNEL_BASE_URL}")
 
 # The endpoint on the ESP32 WebServer that provides sensor data.
