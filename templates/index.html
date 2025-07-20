@@ -774,17 +774,6 @@
             // Add or update nodes that are active
             currentNodeIds.forEach(nodeId => {
                 if (!displayedNodeIds.has(nodeId)) {
-                    // Create new data structure for the node, including ML scores
-                    individualNodeData[nodeId] = {
-                        timestamps: [],
-                        rain: [],
-                        soil: [],
-                        vibration: [],
-                        iso_score: [],
-                        river_score: [],
-                        warning_level_numerical: []
-                    };
-
                     // Create the HTML structure for the new node
                     const nodeCard = document.createElement('div');
                     nodeCard.id = `nodeCard_${nodeId}`;
@@ -800,8 +789,8 @@
                     individualNodesContainer.appendChild(nodeCard);
                     console.log(`Added display for new node: ${nodeId}`);
 
-                    // Initialize the charts for the new node
-                    initializeIndividualNodeChart(nodeId);
+                    // ****** FIX IS HERE: DO NOT INITIALIZE CHART HERE ******
+                    // initializeIndividualNodeChart(nodeId); // <-- THIS LINE WAS REMOVED
                 }
                 // Update metrics for existing or newly added nodes
                 updateIndividualNodeMetrics(nodeId, currentNodes[nodeId]);
@@ -1203,42 +1192,52 @@
                 // Process Individual Node Data
                 manageIndividualNodeDisplays(data.nodes); // Add/remove node cards as needed
                 updateNodeDataTable(data.nodes); // Update the new table
-                const activeNodeIds = [];
-                for (const nodeId in data.nodes) {
-                    activeNodeIds.push(nodeId);
-                    const nodeTimestamp = new Date(data.nodes[nodeId].timestamp);
-                    const nodeData = data.nodes[nodeId];
+                
+                // ****** FIX IS HERE: THIS IS THE NEW LOGIC ******
+                const activeNodeIds = Object.keys(data.nodes);
+                updateActiveNodesList(activeNodeIds);
 
-                    // Ensure node data structure exists and includes new ML fields
-                    if (!individualNodeData[nodeId]) {
+                for (const nodeId in data.nodes) {
+                    const nodeData = data.nodes[nodeId];
+                    const nodeTimestamp = new Date(nodeData.timestamp);
+                    
+                    // Check if this is the first time we're seeing this node
+                    const isNewNode = !individualNodeData[nodeId];
+
+                    if (isNewNode) {
+                        // If it's new, create its data structure
                         individualNodeData[nodeId] = {
                             timestamps: [], rain: [], soil: [], vibration: [],
                             iso_score: [], river_score: [], warning_level_numerical: []
                         };
                     }
 
+                    // Push the latest data into the arrays
                     individualNodeData[nodeId].timestamps.push(nodeTimestamp);
                     individualNodeData[nodeId].rain.push(nodeData.rain);
                     individualNodeData[nodeId].soil.push(nodeData.soil);
                     individualNodeData[nodeId].vibration.push(nodeData.vibration);
-                    individualNodeData[nodeId].iso_score.push(nodeData.iso_score); // New
-                    individualNodeData[nodeId].river_score.push(nodeData.river_score); // New
-                    individualNodeData[nodeId].warning_level_numerical.push(nodeData.warning_level_numerical); // New
+                    individualNodeData[nodeId].iso_score.push(nodeData.iso_score);
+                    individualNodeData[nodeId].river_score.push(nodeData.river_score);
+                    individualNodeData[nodeId].warning_level_numerical.push(nodeData.warning_level_numerical);
 
-                    // Trim old data for individual node
+                    // Trim old data
                     if (individualNodeData[nodeId].timestamps.length > MAX_DATA_POINTS) {
-                        individualNodeData[nodeId].timestamps.shift();
-                        individualNodeData[nodeId].rain.shift();
-                        individualNodeData[nodeId].soil.shift();
-                        individualNodeData[nodeId].vibration.shift();
-                        individualNodeData[nodeId].iso_score.shift(); // New
-                        individualNodeData[nodeId].river_score.shift(); // New
-                        individualNodeData[nodeId].warning_level_numerical.shift(); // New
+                        Object.keys(individualNodeData[nodeId]).forEach(key => {
+                            individualNodeData[nodeId][key].shift();
+                        });
                     }
-                    updateIndividualNodeChart(nodeId);
+
+                    // Now, decide whether to create the chart or just update it
+                    if (isNewNode) {
+                        initializeIndividualNodeChart(nodeId); // Create the chart with the first data point
+                    } else {
+                        updateIndividualNodeChart(nodeId); // Update the existing chart
+                    }
+                    
                     updateIndividualNodeMetrics(nodeId, nodeData);
                 }
-                updateActiveNodesList(activeNodeIds);
+                // ****** END OF FIX ******
 
             } catch (error) {
                 console.error('Error fetching sensor data:', error);
