@@ -1,88 +1,134 @@
+from flask import Flask, jsonify, send_from_directory, render_template, request, abort
 import os
-from flask import Flask, jsonify, request, render_template
-from functools import wraps
+from datetime import datetime, timedelta
 import threading
-from datetime import datetime
+from functools import wraps
 
-# Initialize Flask App, specifying the folders for templates and static files
-app = Flask(__name__, template_folder='templates', static_folder='static')
+# ==============================================================================
+# Flask App Initialization
+# ==============================================================================
+# We initialize the Flask app, specifying the folders for our static assets (CSS, JS, images)
+# and our HTML templates. This is standard setup for a Flask web application.
+app = Flask(__name__, static_folder='static', template_folder='templates')
 
-# --- Configuration ---
-# It's best practice to get the secret key from an environment variable on Render.
-# This keeps your key secure and out of the source code.
-# The local server must send a request with a header 'X-API-KEY' matching this value.
-API_SECRET_KEY = os.environ.get('RENDER_API_SECRET_KEY', 'SensorNet_Alpha_77!')
+# ==============================================================================
+# Configuration
+# ==============================================================================
+# This section defines how the application behaves.
+# RENDER_API_SECRET_KEY: A secret password. The local `app.py` must send this
+#                        key to prove it's allowed to submit data. For security,
+#                        we fetch this from an environment variable on the server.
+# FRONTEND_DATA_RETENTION_SECONDS: How long (in seconds) to keep data for the charts.
+#                                  60 seconds means the charts will show a 1-minute history.
+RENDER_API_SECRET_KEY = os.environ.get('RENDER_API_SECRET_KEY', 'default-secret-key-for-local-testing')
+FRONTEND_DATA_RETENTION_SECONDS = 60
 
-# --- In-Memory Data Store ---
-# This dictionary will hold the most recent complete data payload received from the local server.
-# We use a lock to ensure thread-safe updates and reads, as web servers handle multiple requests concurrently.
-latest_data_store = {
-    'nodes': {},
-    'overall_data': {},
-    'last_updated': None
-}
+# ==============================================================================
+# Global Data Stores & Threading Lock
+# ==============================================================================
+# These variables will hold our sensor data in memory. They are "global" so that
+# different parts of the app (like receiving data and displaying it) can access them.
+#
+# latest_node_data: A dictionary to store the most recent data for each sensor node.
+#                   Example: {'1': {'rain': 100, 'soil': 500, ...}, '2': {...}}
+# overall_historical_data: A list to store the average data of all nodes over time.
+#                          This is used to draw the main trend charts on the dashboard.
+# data_lock: A lock to prevent race conditions. Since the server can receive new data
+#            while a user is trying to view it, this lock ensures that the data isn't
+#            corrupted by simultaneous access.
+latest_node_data = {}
+overall_historical_data = []
 data_lock = threading.Lock()
 
-# --- Security Decorator ---
-def api_key_required(f):
-    """
-    A decorator to protect routes with an API key. It checks for the 'X-API-KEY' header.
-    """
+# ==============================================================================
+# Security Decorator
+# ==============================================================================
+# This is a Python "decorator" for security. We'll wrap our data submission
+# endpoint with it. It checks for a special header ('X-API-KEY') in the incoming
+# request and makes sure the key matches our secret key. If it doesn't match,
+# it rejects the request with a 403 Forbidden error.
+def require_api_key(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Get the API key from the request headers
-        provided_key = request.headers.get('X-API-KEY')
-        
-        # Check if the key is missing or incorrect
-        if not provided_key or provided_key != API_SECRET_KEY:
-            # Log the failed attempt for security monitoring
-            print(f"SECURITY ALERT: Unauthorized access attempt from IP {request.remote_addr}.")
-            # Return a 403 Forbidden error
-            return jsonify({"status": "error", "message": "Unauthorized: Invalid or missing API key."}), 403
-        
-        # If the key is valid, proceed with the original function
-        return f(*args, **kwargs)
+        if request.headers.get('X-API-KEY') and request.headers.get('X-API-KEY') == RENDER_API_SECRET_KEY:
+            return f(*args, **kwargs)
+        else:
+            print("Aborting request due to missing or invalid API key.")
+            abort(403)  # Forbidden
     return decorated_function
 
-# --- API Routes ---
+# ==============================================================================
+# API Endpoints (The "Backend" for our Webpage)
+# ==============================================================================
 
 @app.route('/api/submit_data', methods=['POST'])
-@api_key_required
+@require_api_key
 def submit_data():
     """
-    This is the main endpoint for receiving data from the local Flask server.
-    It's protected by the API key decorator.
+    Receives processed data from the local `app.py` instance.
+    This is the primary data ingestion point for the Render server.
     """
-    # Get the JSON payload from the incoming request
-    new_data = request.get_json()
+    # Get the JSON data sent by the local controller
+    data = request.get_json()
+    if not data:
+        return jsonify({"status": "error", "message": "No data provided."}), 400
 
-    # Basic validation to ensure the payload has the expected structure
-    if not new_data or 'nodes' not in new_data or 'overall_data' not in new_data:
-        return jsonify({"status": "error", "message": "Invalid data format."}), 400
-
-    # Use a lock to safely update the shared data store
-    with data_lock:
-        global latest_data_store
-        latest_data_store['nodes'] = new_data['nodes']
-        latest_data_store['overall_data'] = new_data['overall_data']
-        latest_data_store['last_updated'] = datetime.now().isoformat()
+    # Extract the node data and overall average data from the payload
+    nodes_payload = data.get('nodes', {})
+    overall_payload = data.get('overall_data', {})
     
-    # Log the successful data reception for monitoring purposes
-    print(f"Successfully received and stored data at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.")
-    
-    # Send a success response back to the local server
-    return jsonify({"status": "success", "message": "Data received successfully."}), 200
+    # Use the lock to safely update our global data stores
+    with data_lock:
+        global latest_node_data, overall_historical_data
+        
+        # Update the latest data for each node
+        latest_node_data = nodes_payload
+        
+        # Add the new overall average data to our historical list
+        if overall_payload:
+            # Convert timestamp string from payload back to a datetime object
+            overall_payload['timestamp'] = datetime.fromisoformat(overall_payload['timestamp'])
+            overall_historical_data.append(overall_payload)
+        
+        # Trim the historical data list to keep it from growing indefinitely.
+        # We only keep the last `FRONTEND_DATA_RETENTION_SECONDS` worth of data.
+        cutoff_time = datetime.now() - timedelta(seconds=FRONTEND_DATA_RETENTION_SECONDS)
+        overall_historical_data = [
+            entry for entry in overall_historical_data if entry['timestamp'] >= cutoff_time
+        ]
 
-@app.route('/api/live_data', methods=['GET'])
-def get_live_data():
+    print(f"Successfully received and processed data for {len(nodes_payload)} nodes.")
+    return jsonify({"status": "success", "message": "Data received successfully."})
+
+
+@app.route('/api/live_data')
+def live_data():
     """
-    This endpoint provides the latest stored data to any client (e.g., a cloud dashboard).
+    Provides the live sensor data to the frontend dashboard.
+    The JavaScript on the webpage calls this endpoint every second to get new data.
     """
     with data_lock:
-        # Return a copy of the latest data
-        return jsonify(latest_data_store)
+        # Get the most recent overall data point, or provide a default empty structure
+        latest_overall = overall_historical_data[-1] if overall_historical_data else {
+            'rain': None, 'soil': None, 'vibration': None, 'tilt': None,
+            'iso_score': None, 'river_score': None, 'warning_level_numerical': None
+        }
 
-# --- Page Serving Routes ---
+        # Prepare the data to be sent as JSON
+        response_data = {
+            'timestamp': datetime.now().isoformat(),
+            'overall_data': latest_overall,
+            'nodes': latest_node_data,
+            # These features are disabled on the remote server
+            'is_logging_active': False 
+        }
+    return jsonify(response_data)
+
+# ==============================================================================
+# Page-Serving Routes (The "Frontend")
+# ==============================================================================
+# These routes simply return the HTML pages. Flask uses the `render_template`
+# function to find and return the correct HTML file from the `templates` folder.
 
 @app.route('/')
 def home():
@@ -104,10 +150,12 @@ def about():
     """Serves the about page."""
     return render_template('about.html')
 
-# --- Main Execution Block ---
-# This block is standard for deploying Flask apps on services like Render.
+# ==============================================================================
+# Main Execution Block
+# ==============================================================================
+# This block runs when the script is executed directly.
 if __name__ == '__main__':
-    # Render's web service will use a production-ready server like Gunicorn,
-    # but this is useful for local testing.
-    # The host '0.0.0.0' makes the server accessible from outside its container.
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    # The host '0.0.0.0' makes the server accessible from other devices on the network.
+    # `debug=True` is useful for development but should be turned off for production.
+    # Render will handle running this in a production-ready way.
+    app.run(host='0.0.0.0', port=5000, debug=True)
