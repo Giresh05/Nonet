@@ -252,7 +252,12 @@
         function initializeOverallSensorChart() {
             const layout = {
                 title: { text: 'Overall Sensor Trends', font: { size: 18, color: '#334155' }, y: 0.99 },
-                xaxis: { title: 'Time', showgrid: true, tickformat: '%H:%M:%S', linecolor: '#cbd5e1', linewidth: 1 },
+                xaxis: { 
+                    title: 'Time', 
+                    showgrid: true, 
+                    linecolor: '#cbd5e1', 
+                    linewidth: 1 
+                },
                 yaxis: { title: 'Value', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [0, 4095] },
                 margin: { l: 50, r: 20, t: 50, b: 50 },
                 hovermode: 'x unified',
@@ -278,7 +283,12 @@
          */
         function initializeOverallAnomalyCharts() {
             const commonLayout = {
-                xaxis: { title: 'Time', showgrid: true, tickformat: '%H:%M:%S', linecolor: '#cbd5e1', linewidth: 1 },
+                xaxis: { 
+                    title: 'Time', 
+                    showgrid: true, 
+                    linecolor: '#cbd5e1', 
+                    linewidth: 1 
+                },
                 margin: { l: 50, r: 20, t: 40, b: 50 },
                 hovermode: 'x unified',
                 responsive: true,
@@ -353,7 +363,12 @@
             if (!chartDiv || !isoChartDiv || !riverChartDiv || !warningChartDiv) return;
 
             const commonLayout = {
-                xaxis: { title: 'Time', showgrid: true, tickformat: '%H:%M:%S', linecolor: '#cbd5e1', linewidth: 1 },
+                xaxis: { 
+                    title: 'Time', 
+                    showgrid: true, 
+                    linecolor: '#cbd5e1', 
+                    linewidth: 1 
+                },
                 margin: { l: 50, r: 20, t: 40, b: 50 },
                 hovermode: 'x unified',
                 responsive: true,
