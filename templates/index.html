@@ -206,17 +206,31 @@
         const API_URL = '/api/live_data'; // Endpoint for the Render server backend
         const FETCH_INTERVAL_MS = 2000; // Fetch new data every 2 seconds
         const MAX_DATA_POINTS = 60; // Keep last 60 data points for charts
+
+        // Data storage for overall sensor data
+        let overallSensorData = {
+            timestamps: [],
+            rain: [],
+            soil: [],
+            vibration: [],
+            iso_score: [],
+            river_score: [],
+            warning_level_numerical: []
+        };
+
+        // Object to store data for individual nodes, keyed by node ID
+        let individualNodeData = {};
         
         // Keep track of the last update timestamp to avoid re-rendering identical data
         let lastKnownUpdateTimestamp = null;
 
-        // Global store for historical data for all charts
-        const chartDataStore = {
-            overall: { timestamps: [], rain: [], soil: [], vibration: [], iso_score: [], river_score: [], warning_level_numerical: [] },
-            nodes: {} // e.g., { '1': { timestamps: [...], rain: [...] }, '2': ... }
-        };
-
         // DOM elements
+        const overallSensorChartDiv = document.getElementById('overallSensorChart');
+        const overallSensorMetricsDiv = document.getElementById('overallSensorMetrics');
+        const overallIsoScoreChartDiv = document.getElementById('overallIsoScoreChart');
+        const overallRiverScoreChartDiv = document.getElementById('overallRiverScoreChart');
+        const overallWarningLevelChartDiv = document.getElementById('overallWarningLevelChart');
+        const overallAnomalyMetricsDiv = document.getElementById('overallAnomalyMetrics');
         const individualNodesContainer = document.getElementById('individualNodesContainer');
         const lastUpdateTimeSpan = document.getElementById('lastUpdateTime');
         const connectionStatusDot = document.getElementById('connectionStatusDot');
@@ -225,57 +239,183 @@
         const activeNodesListDiv = document.getElementById('activeNodesList');
         const nodeDataTableBody = document.querySelector('#nodeDataTable tbody');
 
-        /**
-         * Generic function to update a Plotly chart with new data.
-         * It extends the traces with new points and ensures the chart doesn't exceed MAX_DATA_POINTS.
-         */
-        function updateChart(chartDivId, x_data, y_data_map) {
-            const chartDiv = document.getElementById(chartDivId);
-            if (!chartDiv) return;
+        // Plotly chart instances
+        let overallSensorChartInstance;
+        let overallIsoScoreChartInstance;
+        let overallRiverScoreChartInstance;
+        let overallWarningLevelChartInstance;
+        const individualChartInstances = {};
 
-            const traces = Object.keys(y_data_map).map(() => ({ x: [[x_data]], y: [] }));
-            Object.values(y_data_map).forEach((val, i) => {
-                traces[i].y.push([val]);
-            });
-            
-            const traceIndices = Array.from(Array(Object.keys(y_data_map).length).keys());
-            Plotly.extendTraces(chartDiv, { x: traces[0].x, y: traces.map(t => t.y[0]) }, traceIndices, MAX_DATA_POINTS);
-        }
-        
         /**
-         * Updates all overall metrics and charts.
+         * Initializes the overall sensor data chart using Plotly.js.
          */
-        function updateOverallDisplay(overallData) {
-            const timestamp = new Date(overallData.timestamp);
-            
-            // Update metrics
+        function initializeOverallSensorChart() {
+            const layout = {
+                title: { text: 'Overall Sensor Trends', font: { size: 18, color: '#334155' }, y: 0.99 },
+                xaxis: { title: 'Time', showgrid: true, tickformat: '%H:%M:%S', linecolor: '#cbd5e1', linewidth: 1 },
+                yaxis: { title: 'Value', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [0, 4095] },
+                margin: { l: 50, r: 20, t: 50, b: 50 },
+                hovermode: 'x unified',
+                responsive: true,
+                paper_bgcolor: 'var(--card-bg)',
+                plot_bgcolor: 'var(--card-bg)',
+                font: { family: 'Inter, sans-serif', color: 'var(--text-color)' },
+                legend: { x: 0, y: 1.15, orientation: 'h', bgcolor: 'rgba(255, 255, 255, 0)', bordercolor: 'rgba(255, 255, 255, 0)' }
+            };
+
+            const data = [
+                { x: [], y: [], mode: 'lines', name: 'Rain', line: { color: '#3b82f6', width: 2 } },
+                { x: [], y: [], mode: 'lines', name: 'Soil Moisture', line: { color: '#22c55e', width: 2 } },
+                { x: [], y: [], mode: 'lines', name: 'Vibration (g)', line: { color: '#ef4444', width: 2 } }
+            ];
+
+            Plotly.newPlot(overallSensorChartDiv, data, layout, { displayModeBar: false, responsive: true });
+            overallSensorChartInstance = overallSensorChartDiv;
+        }
+
+        /**
+         * Initializes the overall anomaly score charts using Plotly.js.
+         */
+        function initializeOverallAnomalyCharts() {
+            const commonLayout = {
+                xaxis: { title: 'Time', showgrid: true, tickformat: '%H:%M:%S', linecolor: '#cbd5e1', linewidth: 1 },
+                margin: { l: 50, r: 20, t: 40, b: 50 },
+                hovermode: 'x unified',
+                responsive: true,
+                paper_bgcolor: 'var(--card-bg)',
+                plot_bgcolor: 'var(--card-bg)',
+                font: { family: 'Inter, sans-serif', color: 'var(--text-color)' },
+                legend: { x: 0, y: 1.15, orientation: 'h', bgcolor: 'rgba(255, 255, 255, 0)', bordercolor: 'rgba(255, 255, 255, 0)' }
+            };
+
+            const isoLayout = { ...commonLayout, title: { text: 'Overall Isolation Forest Score', font: { size: 16, color: '#334155' } }, yaxis: { title: 'Score', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [-0.5, 0.5] } };
+            Plotly.newPlot(overallIsoScoreChartDiv, [{ x: [], y: [], mode: 'lines', name: 'IF Score', line: { color: '#8b5cf6', width: 2 } }], isoLayout, { displayModeBar: false, responsive: true });
+            overallIsoScoreChartInstance = overallIsoScoreChartDiv;
+
+            const riverLayout = { ...commonLayout, title: { text: 'Overall HalfSpaceTrees Score', font: { size: 16, color: '#334155' } }, yaxis: { title: 'Score', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [0, 1] } };
+            Plotly.newPlot(overallRiverScoreChartDiv, [{ x: [], y: [], mode: 'lines', name: 'HST Score', line: { color: '#ec4899', width: 2 } }], riverLayout, { displayModeBar: false, responsive: true });
+            overallRiverScoreChartInstance = overallRiverScoreChartDiv;
+
+            const warningLayout = { ...commonLayout, title: { text: 'Overall Ensemble Warning Level', font: { size: 16, color: '#334155' } }, yaxis: { title: 'Level', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [0.0, 2.0] } };
+            Plotly.newPlot(overallWarningLevelChartDiv, [{ x: [], y: [], mode: 'lines', name: 'Warning Level', line: { color: '#f97316', width: 2 } }], warningLayout, { displayModeBar: false, responsive: true });
+            overallWarningLevelChartInstance = overallWarningLevelChartDiv;
+        }
+
+        /**
+         * Updates the overall charts with new data.
+         */
+        function updateOverallCharts(timestamp, data) {
+            if (!overallSensorChartInstance) initializeOverallSensorChart();
+            if (!overallIsoScoreChartInstance) initializeOverallAnomalyCharts();
+
+            const update = (chart, y_data, trace_index) => {
+                Plotly.extendTraces(chart, { x: [[timestamp]], y: [[y_data]] }, [trace_index], MAX_DATA_POINTS);
+            };
+
+            update(overallSensorChartInstance, data.rain, 0);
+            update(overallSensorChartInstance, data.soil, 1);
+            update(overallSensorChartInstance, data.vibration, 2);
+            update(overallIsoScoreChartInstance, data.iso_score, 0);
+            update(overallRiverScoreChartInstance, data.river_score, 0);
+            update(overallWarningLevelChartInstance, data.warning_level_numerical, 0);
+        }
+
+        /**
+         * Updates the live metrics display for overall sensor data.
+         */
+        function updateOverallMetrics(latestData) {
             const format = (val, digits = 0) => (val !== undefined && val !== null ? val.toFixed(digits) : 'N/A');
-            document.getElementById('overallSensorMetrics').innerHTML = `
-                <div class="p-3 bg-blue-50 rounded-lg shadow-sm"><p class="text-sm text-blue-700 font-semibold">Rain</p><p class="text-xl font-bold text-blue-900">${format(overallData.rain)}</p></div>
-                <div class="p-3 bg-green-50 rounded-lg shadow-sm"><p class="text-sm text-green-700 font-semibold">Soil Moisture</p><p class="text-xl font-bold text-green-900">${format(overallData.soil)}</p></div>
-                <div class="p-3 bg-red-50 rounded-lg shadow-sm"><p class="text-sm text-red-700 font-semibold">Vibration (g)</p><p class="text-xl font-bold text-red-900">${format(overallData.vibration, 3)}g</p></div>`;
-            document.getElementById('overallAnomalyMetrics').innerHTML = `
-                <div class="p-3 bg-violet-50 rounded-lg shadow-sm"><p class="text-sm text-violet-700 font-semibold">IF Score</p><p class="text-xl font-bold text-violet-900">${format(overallData.iso_score, 3)}</p></div>
-                <div class="p-3 bg-pink-50 rounded-lg shadow-sm"><p class="text-sm text-pink-700 font-semibold">HST Score</p><p class="text-xl font-bold text-pink-900">${format(overallData.river_score, 3)}</p></div>
-                <div class="p-3 bg-orange-50 rounded-lg shadow-sm"><p class="text-sm text-orange-700 font-semibold">Warning Level</p><p class="text-xl font-bold text-orange-900">${format(overallData.warning_level_numerical, 3)}</p></div>`;
+            overallSensorMetricsDiv.innerHTML = `
+                <div class="p-3 bg-blue-50 rounded-lg shadow-sm"><p class="text-sm text-blue-700 font-semibold">Rain</p><p class="text-xl font-bold text-blue-900">${format(latestData.rain)}</p></div>
+                <div class="p-3 bg-green-50 rounded-lg shadow-sm"><p class="text-sm text-green-700 font-semibold">Soil Moisture</p><p class="text-xl font-bold text-green-900">${format(latestData.soil)}</p></div>
+                <div class="p-3 bg-red-50 rounded-lg shadow-sm"><p class="text-sm text-red-700 font-semibold">Vibration (g)</p><p class="text-xl font-bold text-red-900">${format(latestData.vibration, 3)}g</p></div>`;
 
-            // Update charts
-            updateChart('overallSensorChart', timestamp, { rain: overallData.rain, soil: overallData.soil, vibration: overallData.vibration });
-            updateChart('overallIsoScoreChart', timestamp, { iso_score: overallData.iso_score });
-            updateChart('overallRiverScoreChart', timestamp, { river_score: overallData.river_score });
-            updateChart('overallWarningLevelChart', timestamp, { warning_level: overallData.warning_level_numerical });
+            overallAnomalyMetricsDiv.innerHTML = `
+                <div class="p-3 bg-violet-50 rounded-lg shadow-sm"><p class="text-sm text-violet-700 font-semibold">IF Score</p><p class="text-xl font-bold text-violet-900">${format(latestData.iso_score, 3)}</p></div>
+                <div class="p-3 bg-pink-50 rounded-lg shadow-sm"><p class="text-sm text-pink-700 font-semibold">HST Score</p><p class="text-xl font-bold text-pink-900">${format(latestData.river_score, 3)}</p></div>
+                <div class="p-3 bg-orange-50 rounded-lg shadow-sm"><p class="text-sm text-orange-700 font-semibold">Warning Level</p><p class="text-xl font-bold text-orange-900">${format(latestData.warning_level_numerical, 3)}</p></div>`;
         }
 
+        /**
+         * Initializes all charts for a specific individual node.
+         */
+        function initializeIndividualNodeChart(nodeId) {
+            const chartDivId = `nodeChart_${nodeId}`;
+            const isoChartDivId = `nodeIsoScoreChart_${nodeId}`;
+            const riverChartDivId = `nodeRiverScoreChart_${nodeId}`;
+            const warningChartDivId = `nodeWarningLevelChart_${nodeId}`;
+
+            const chartDiv = document.getElementById(chartDivId);
+            const isoChartDiv = document.getElementById(isoChartDivId);
+            const riverChartDiv = document.getElementById(riverChartDivId);
+            const warningChartDiv = document.getElementById(warningChartDivId);
+
+            if (!chartDiv || !isoChartDiv || !riverChartDiv || !warningChartDiv) return;
+
+            const commonLayout = {
+                xaxis: { title: 'Time', showgrid: true, tickformat: '%H:%M:%S', linecolor: '#cbd5e1', linewidth: 1 },
+                margin: { l: 50, r: 20, t: 40, b: 50 },
+                hovermode: 'x unified',
+                responsive: true,
+                paper_bgcolor: 'var(--card-bg)',
+                plot_bgcolor: 'var(--card-bg)',
+                font: { family: 'Inter, sans-serif', color: 'var(--text-color)' },
+                legend: { x: 0, y: 1.15, orientation: 'h', bgcolor: 'rgba(255, 255, 255, 0)', bordercolor: 'rgba(255, 255, 255, 0)' }
+            };
+
+            const sensorLayout = { ...commonLayout, title: { text: `Node ${nodeId} Sensor Data`, font: { size: 16, color: '#334155' } }, yaxis: { title: 'Value', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [0, 4095] } };
+            Plotly.newPlot(chartDiv, [
+                { x: [], y: [], mode: 'lines', name: 'Rain', line: { color: '#3b82f6', width: 2 } },
+                { x: [], y: [], mode: 'lines', name: 'Soil', line: { color: '#22c55e', width: 2 } },
+                { x: [], y: [], mode: 'lines', name: 'Vib (g)', line: { color: '#ef4444', width: 2 } }
+            ], sensorLayout, { displayModeBar: false, responsive: true });
+            individualChartInstances[`sensor_${nodeId}`] = chartDiv;
+
+            const isoLayout = { ...commonLayout, title: { text: `Node ${nodeId} IF Score`, font: { size: 14, color: '#334155' } }, yaxis: { title: 'Score', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [-0.5, 0.5] } };
+            Plotly.newPlot(isoChartDiv, [{ x: [], y: [], mode: 'lines', name: 'IF Score', line: { color: '#8b5cf6', width: 2 } }], isoLayout, { displayModeBar: false, responsive: true });
+            individualChartInstances[`iso_${nodeId}`] = isoChartDiv;
+
+            const riverLayout = { ...commonLayout, title: { text: `Node ${nodeId} HST Score`, font: { size: 14, color: '#334155' } }, yaxis: { title: 'Score', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [0, 1] } };
+            Plotly.newPlot(riverChartDiv, [{ x: [], y: [], mode: 'lines', name: 'HST Score', line: { color: '#ec4899', width: 2 } }], riverLayout, { displayModeBar: false, responsive: true });
+            individualChartInstances[`river_${nodeId}`] = riverChartDiv;
+
+            const warningLayout = { ...commonLayout, title: { text: `Node ${nodeId} Warning Level`, font: { size: 14, color: '#334155' } }, yaxis: { title: 'Level', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [0.0, 2.0] } };
+            Plotly.newPlot(warningChartDiv, [{ x: [], y: [], mode: 'lines', name: 'Warning Level', line: { color: '#f97316', width: 2 } }], warningLayout, { displayModeBar: false, responsive: true });
+            individualChartInstances[`warning_${nodeId}`] = warningChartDiv;
+        }
 
         /**
-         * Manages the entire display for all individual nodes.
-         * Creates, updates, or removes node cards and charts based on the latest data.
+         * Updates the charts for a specific individual node with new data.
          */
-        function manageAllNodeDisplays(nodesData) {
-            const currentNodeIds = Object.keys(nodesData);
-            const displayedNodeIds = new Set(Object.keys(chartDataStore.nodes));
+        function updateIndividualNodeChart(nodeId) {
+            const nodeData = individualNodeData[nodeId];
+            if (!nodeData || !individualChartInstances[`sensor_${nodeId}`]) return;
+            
+            const lastTimestamp = nodeData.timestamps[nodeData.timestamps.length - 1];
 
-            // Set grid layout
+            const update = (chartKey, y_data_key, trace_index) => {
+                const chart = individualChartInstances[chartKey];
+                const y_data = nodeData[y_data_key][nodeData[y_data_key].length - 1];
+                if (chart) {
+                    Plotly.extendTraces(chart, { x: [[lastTimestamp]], y: [[y_data]] }, [trace_index], MAX_DATA_POINTS);
+                }
+            };
+            
+            update(`sensor_${nodeId}`, 'rain', 0);
+            update(`sensor_${nodeId}`, 'soil', 1);
+            update(`sensor_${nodeId}`, 'vibration', 2);
+            update(`iso_${nodeId}`, 'iso_score', 0);
+            update(`river_${nodeId}`, 'river_score', 0);
+            update(`warning_${nodeId}`, 'warning_level_numerical', 0);
+        }
+
+        /**
+         * Manages the creation and removal of individual node display sections.
+         */
+        function manageIndividualNodeDisplays(currentNodes) {
+            const currentNodeIds = Object.keys(currentNodes);
+            const displayedNodeIds = new Set(Object.keys(individualChartInstances).map(k => k.split('_')[1]));
+
             let gridClasses = 'grid gap-6';
             if (currentNodeIds.length === 1) gridClasses += ' grid-cols-1';
             else if (currentNodeIds.length === 2) gridClasses += ' grid-cols-1 sm:grid-cols-2';
@@ -294,18 +434,14 @@
             displayedNodeIds.forEach(nodeId => {
                 if (!currentNodeIds.includes(nodeId)) {
                     document.getElementById(`nodeCard_${nodeId}`)?.remove();
-                    delete chartDataStore.nodes[nodeId];
+                    ['sensor_', 'iso_', 'river_', 'warning_'].forEach(prefix => delete individualChartInstances[prefix + nodeId]);
+                    delete individualNodeData[nodeId];
                 }
             });
 
             // Add or update nodes that are active
             currentNodeIds.forEach(nodeId => {
-                const nodeData = nodesData[nodeId];
-                const timestamp = new Date(nodeData.last_seen_by_flask);
-
-                // If it's a new node, create its card and initialize its charts
-                if (!chartDataStore.nodes[nodeId]) {
-                    chartDataStore.nodes[nodeId] = {}; // Mark as known
+                if (!individualChartInstances[`sensor_${nodeId}`]) {
                     const nodeCard = document.createElement('div');
                     nodeCard.id = `nodeCard_${nodeId}`;
                     nodeCard.className = 'bg-[var(--card-bg)] p-4 rounded-lg shadow-md border border-gray-200';
@@ -317,26 +453,17 @@
                         <div id="nodeWarningLevelChart_${nodeId}" class="w-full h-48 bg-gray-50 rounded-lg border border-gray-200 mb-4"></div>
                         <div id="nodeMetrics_${nodeId}" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4 text-center"></div>`;
                     individualNodesContainer.appendChild(nodeCard);
-                    initializeIndividualNodeCharts(nodeId);
+                    initializeIndividualNodeChart(nodeId);
                 }
-
-                // Always update the metrics display for the node
-                updateIndividualNodeMetrics(nodeId, nodeData);
-
-                // Update the charts for this node with the latest data point
-                updateChart(`nodeChart_${nodeId}`, timestamp, { rain: nodeData.rain, soil: nodeData.soil, vibration: nodeData.vibration });
-                updateChart(`nodeIsoScoreChart_${nodeId}`, timestamp, { iso_score: nodeData.iso_score });
-                updateChart(`nodeRiverScoreChart_${nodeId}`, timestamp, { river_score: nodeData.river_score });
-                updateChart(`nodeWarningLevelChart_${nodeId}`, timestamp, { warning_level: nodeData.warning_level_numerical });
+                updateIndividualNodeMetrics(nodeId, currentNodes[nodeId]);
             });
 
-            // Update the active node list and data table
-            updateActiveNodesList(currentNodeIds);
-            updateNodeDataTable(nodesData);
+            // Relayout all active charts after DOM changes
+            Object.values(individualChartInstances).forEach(chart => Plotly.relayout(chart, { autosize: true }));
         }
-        
+
         /**
-         * Updates the metrics box for a single node.
+         * Updates the live metrics display for an individual node.
          */
         function updateIndividualNodeMetrics(nodeId, latestData) {
             const nodeMetricsDiv = document.getElementById(`nodeMetrics_${nodeId}`);
@@ -354,18 +481,18 @@
         }
 
         /**
-         * Updates the list of active nodes in the status panel.
+         * Updates the list of active nodes displayed on the dashboard.
          */
         function updateActiveNodesList(nodeIds) {
             if (nodeIds.length === 0) {
                 activeNodesListDiv.innerHTML = '<p class="text-gray-500">No nodes detected yet...</p>';
             } else {
-                activeNodesListDiv.innerHTML = nodeIds.sort().map(id => `<div class="flex items-center text-gray-700 py-1"><span class="h-2 w-2 rounded-full bg-blue-400 mr-2"></span><span>Node ${id}</span></div>`).join('');
+                activeNodesListDiv.innerHTML = nodeIds.map(id => `<div class="flex items-center text-gray-700 py-1"><span class="h-2 w-2 rounded-full bg-blue-400 mr-2"></span><span>Node ${id}</span></div>`).join('');
             }
         }
 
         /**
-         * Updates the main data table with the latest information for each node.
+         * Updates the current data table with the latest information for each node.
          */
         function updateNodeDataTable(nodesData) {
             let tableHtml = '';
@@ -418,9 +545,9 @@
         }
 
         /**
-         * Main function to fetch data and orchestrate UI updates.
+         * Fetches live sensor data from the Render server backend API.
          */
-        async function fetchAndUpdate() {
+        async function fetchSensorData() {
             try {
                 const response = await fetch(API_URL);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -439,9 +566,50 @@
                 lastKnownUpdateTimestamp = data.last_updated;
                 setConnectionStatus(true, 'Receiving Data', data.last_updated);
 
-                // Update all parts of the UI
-                updateOverallDisplay(data.overall_data);
-                manageAllNodeDisplays(data.nodes);
+                // Process and update all UI components with the new data
+                const overallData = data.overall_data;
+                const nodesData = data.nodes;
+                const overallTimestamp = new Date(overallData.timestamp);
+
+                updateOverallCharts(overallTimestamp, overallData);
+                updateOverallMetrics(overallData);
+                manageIndividualNodeDisplays(nodesData);
+                updateNodeDataTable(nodesData);
+                updateActiveNodesList(Object.keys(nodesData));
+
+                // **FIX STARTS HERE**
+                // Process and store historical data for individual nodes
+                for (const nodeId in nodesData) {
+                    const nodeData = nodesData[nodeId];
+                    const nodeTimestamp = new Date(nodeData.last_seen_by_flask);
+
+                    // Ensure the data structure exists for the node
+                    if (!individualNodeData[nodeId]) {
+                        individualNodeData[nodeId] = {
+                            timestamps: [], rain: [], soil: [], vibration: [],
+                            iso_score: [], river_score: [], warning_level_numerical: []
+                        };
+                    }
+
+                    // Add new data point to the historical arrays
+                    const nodeHistory = individualNodeData[nodeId];
+                    nodeHistory.timestamps.push(nodeTimestamp);
+                    nodeHistory.rain.push(nodeData.rain);
+                    nodeHistory.soil.push(nodeData.soil);
+                    nodeHistory.vibration.push(nodeData.vibration);
+                    nodeHistory.iso_score.push(nodeData.iso_score);
+                    nodeHistory.river_score.push(nodeData.river_score);
+                    nodeHistory.warning_level_numerical.push(nodeData.warning_level_numerical);
+
+                    // Trim old data to maintain MAX_DATA_POINTS
+                    if (nodeHistory.timestamps.length > MAX_DATA_POINTS) {
+                        Object.keys(nodeHistory).forEach(key => nodeHistory[key].shift());
+                    }
+                    
+                    // Update the chart for this specific node
+                    updateIndividualNodeChart(nodeId);
+                }
+                // **FIX ENDS HERE**
 
             } catch (error) {
                 console.error('Error fetching sensor data:', error);
@@ -449,67 +617,12 @@
             }
         }
 
-        /**
-         * Initializes all Plotly charts with their layouts and data traces.
-         */
-        function initializeAllCharts() {
-            const commonLayout = (title, y_title, y_range) => ({
-                title: { text: title, font: { size: 16, color: '#334155' } },
-                xaxis: { title: 'Time', showgrid: true, tickformat: '%H:%M:%S', linecolor: '#cbd5e1', linewidth: 1 },
-                yaxis: { title: y_title, showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: y_range },
-                margin: { l: 50, r: 20, t: 40, b: 50 },
-                hovermode: 'x unified',
-                responsive: true,
-                paper_bgcolor: 'var(--card-bg)',
-                plot_bgcolor: 'var(--card-bg)',
-                font: { family: 'Inter, sans-serif', color: 'var(--text-color)' },
-                legend: { x: 0, y: 1.15, orientation: 'h', bgcolor: 'rgba(255, 255, 255, 0)', bordercolor: 'rgba(255, 255, 255, 0)' }
-            });
-
-            Plotly.newPlot('overallSensorChart', 
-                [ { x: [], y: [], mode: 'lines', name: 'Rain', line: { color: '#3b82f6', width: 2 } },
-                  { x: [], y: [], mode: 'lines', name: 'Soil', line: { color: '#22c55e', width: 2 } },
-                  { x: [], y: [], mode: 'lines', name: 'Vib (g)', line: { color: '#ef4444', width: 2 } } ],
-                commonLayout('Overall Sensor Trends', 'Value', [0, 4095]), 
-                { displayModeBar: false, responsive: true }
-            );
-            Plotly.newPlot('overallIsoScoreChart', [{ x: [], y: [], mode: 'lines', name: 'IF Score', line: { color: '#8b5cf6', width: 2 } }], commonLayout('Overall IF Score', 'Score', [-0.5, 0.5]), { displayModeBar: false, responsive: true });
-            Plotly.newPlot('overallRiverScoreChart', [{ x: [], y: [], mode: 'lines', name: 'HST Score', line: { color: '#ec4899', width: 2 } }], commonLayout('Overall HST Score', 'Score', [0, 1]), { displayModeBar: false, responsive: true });
-            Plotly.newPlot('overallWarningLevelChart', [{ x: [], y: [], mode: 'lines', name: 'Warning Level', line: { color: '#f97316', width: 2 } }], commonLayout('Overall Warning Level', 'Level', [0, 2]), { displayModeBar: false, responsive: true });
-        }
-
-        function initializeIndividualNodeCharts(nodeId) {
-             const commonLayout = (title, y_title, y_range) => ({
-                title: { text: title, font: { size: 14, color: '#334155' } },
-                xaxis: { title: 'Time', showgrid: true, tickformat: '%H:%M:%S', linecolor: '#cbd5e1', linewidth: 1 },
-                yaxis: { title: y_title, showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: y_range },
-                margin: { l: 50, r: 20, t: 40, b: 50 },
-                hovermode: 'x unified',
-                responsive: true,
-                paper_bgcolor: 'var(--card-bg)',
-                plot_bgcolor: 'var(--card-bg)',
-                font: { family: 'Inter, sans-serif', color: 'var(--text-color)' },
-                legend: { x: 0, y: 1.15, orientation: 'h', bgcolor: 'rgba(255, 255, 255, 0)', bordercolor: 'rgba(255, 255, 255, 0)' }
-            });
-
-            Plotly.newPlot(`nodeChart_${nodeId}`, 
-                [ { x: [], y: [], mode: 'lines', name: 'Rain', line: { color: '#3b82f6', width: 2 } },
-                  { x: [], y: [], mode: 'lines', name: 'Soil', line: { color: '#22c55e', width: 2 } },
-                  { x: [], y: [], mode: 'lines', name: 'Vib (g)', line: { color: '#ef4444', width: 2 } } ],
-                commonLayout(`Node ${nodeId} Sensors`, 'Value', [0, 4095]), 
-                { displayModeBar: false, responsive: true }
-            );
-            Plotly.newPlot(`nodeIsoScoreChart_${nodeId}`, [{ x: [], y: [], mode: 'lines', name: 'IF Score', line: { color: '#8b5cf6', width: 2 } }], commonLayout(`Node ${nodeId} IF Score`, 'Score', [-0.5, 0.5]), { displayModeBar: false, responsive: true });
-            Plotly.newPlot(`nodeRiverScoreChart_${nodeId}`, [{ x: [], y: [], mode: 'lines', name: 'HST Score', line: { color: '#ec4899', width: 2 } }], commonLayout(`Node ${nodeId} HST Score`, 'Score', [0, 1]), { displayModeBar: false, responsive: true });
-            Plotly.newPlot(`nodeWarningLevelChart_${nodeId}`, [{ x: [], y: [], mode: 'lines', name: 'Warning Level', line: { color: '#f97316', width: 2 } }], commonLayout(`Node ${nodeId} Warning`, 'Level', [0, 2]), { displayModeBar: false, responsive: true });
-        }
-
-
-        // --- Main Execution ---
+        // Initialize charts and start fetching data when the DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
-            initializeAllCharts();
-            fetchAndUpdate(); // Initial fetch
-            setInterval(fetchAndUpdate, FETCH_INTERVAL_MS);
+            initializeOverallSensorChart();
+            initializeOverallAnomalyCharts();
+            fetchSensorData(); // Initial fetch
+            setInterval(fetchSensorData, FETCH_INTERVAL_MS);
 
             const themeIcon = document.getElementById("themeIcon");
             if (document.body.classList.contains("dark-mode")) themeIcon.textContent = "☀️";
@@ -521,9 +634,11 @@
             });
 
             window.onresize = function() {
-                // This will resize all existing plotly charts on the page
-                const allPlotlyCharts = document.querySelectorAll('.js-plotly-plot');
-                allPlotlyCharts.forEach(chart => Plotly.relayout(chart, { autosize: true }));
+                Object.values(individualChartInstances).forEach(chart => Plotly.relayout(chart, { autosize: true }));
+                if (overallSensorChartInstance) Plotly.relayout(overallSensorChartInstance, { autosize: true });
+                if (overallIsoScoreChartInstance) Plotly.relayout(overallIsoScoreChartInstance, { autosize: true });
+                if (overallRiverScoreChartInstance) Plotly.relayout(overallRiverScoreChartInstance, { autosize: true });
+                if (overallWarningLevelChartInstance) Plotly.relayout(overallWarningLevelChartInstance, { autosize: true });
             };
         });
     </script>
