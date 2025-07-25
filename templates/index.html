@@ -206,20 +206,6 @@
         const API_URL = '/api/live_data'; // Endpoint for the Render server backend
         const FETCH_INTERVAL_MS = 2000; // Fetch new data every 2 seconds
         const MAX_DATA_POINTS = 60; // Keep last 60 data points for charts
-
-        // Data storage for overall sensor data
-        let overallSensorData = {
-            timestamps: [],
-            rain: [],
-            soil: [],
-            vibration: [],
-            iso_score: [],
-            river_score: [],
-            warning_level_numerical: []
-        };
-
-        // Object to store data for individual nodes, keyed by node ID
-        let individualNodeData = {};
         
         // Keep track of the last update timestamp to avoid re-rendering identical data
         let lastKnownUpdateTimestamp = null;
@@ -387,26 +373,25 @@
         /**
          * Updates the charts for a specific individual node with new data.
          */
-        function updateIndividualNodeChart(nodeId) {
-            const nodeData = individualNodeData[nodeId];
-            if (!nodeData || !individualChartInstances[`sensor_${nodeId}`]) return;
-            
-            const lastTimestamp = nodeData.timestamps[nodeData.timestamps.length - 1];
+        function updateIndividualNodeChart(nodeId, timestamp, nodeData) {
+            if (!individualChartInstances[`sensor_${nodeId}`]) {
+                // Safeguard in case this is called before initialization is complete.
+                return;
+            }
 
-            const update = (chartKey, y_data_key, trace_index) => {
+            const update = (chartKey, y_data, trace_index) => {
                 const chart = individualChartInstances[chartKey];
-                const y_data = nodeData[y_data_key][nodeData[y_data_key].length - 1];
                 if (chart) {
-                    Plotly.extendTraces(chart, { x: [[lastTimestamp]], y: [[y_data]] }, [trace_index], MAX_DATA_POINTS);
+                    Plotly.extendTraces(chart, { x: [[timestamp]], y: [[y_data]] }, [trace_index], MAX_DATA_POINTS);
                 }
             };
             
-            update(`sensor_${nodeId}`, 'rain', 0);
-            update(`sensor_${nodeId}`, 'soil', 1);
-            update(`sensor_${nodeId}`, 'vibration', 2);
-            update(`iso_${nodeId}`, 'iso_score', 0);
-            update(`river_${nodeId}`, 'river_score', 0);
-            update(`warning_${nodeId}`, 'warning_level_numerical', 0);
+            update(`sensor_${nodeId}`, nodeData.rain, 0);
+            update(`sensor_${nodeId}`, nodeData.soil, 1);
+            update(`sensor_${nodeId}`, nodeData.vibration, 2);
+            update(`iso_${nodeId}`, nodeData.iso_score, 0);
+            update(`river_${nodeId}`, nodeData.river_score, 0);
+            update(`warning_${nodeId}`, nodeData.warning_level_numerical, 0);
         }
 
         /**
@@ -414,7 +399,7 @@
          */
         function manageIndividualNodeDisplays(currentNodes) {
             const currentNodeIds = Object.keys(currentNodes);
-            const displayedNodeIds = new Set(Object.keys(individualChartInstances).map(k => k.split('_')[1]));
+            const displayedNodeIds = new Set(Object.keys(individualChartInstances).map(k => k.split('_')[1]).filter(id => id));
 
             let gridClasses = 'grid gap-6';
             if (currentNodeIds.length === 1) gridClasses += ' grid-cols-1';
@@ -435,12 +420,12 @@
                 if (!currentNodeIds.includes(nodeId)) {
                     document.getElementById(`nodeCard_${nodeId}`)?.remove();
                     ['sensor_', 'iso_', 'river_', 'warning_'].forEach(prefix => delete individualChartInstances[prefix + nodeId]);
-                    delete individualNodeData[nodeId];
                 }
             });
 
             // Add or update nodes that are active
             currentNodeIds.forEach(nodeId => {
+                // If the chart instance doesn't exist, it's a new node to display.
                 if (!individualChartInstances[`sensor_${nodeId}`]) {
                     const nodeCard = document.createElement('div');
                     nodeCard.id = `nodeCard_${nodeId}`;
@@ -455,6 +440,7 @@
                     individualNodesContainer.appendChild(nodeCard);
                     initializeIndividualNodeChart(nodeId);
                 }
+                // Always update the metrics display for the node.
                 updateIndividualNodeMetrics(nodeId, currentNodes[nodeId]);
             });
 
@@ -576,39 +562,12 @@
                 updateNodeDataTable(nodesData);
                 updateActiveNodesList(Object.keys(nodesData));
 
-                // **FIX STARTS HERE**
-                // Process and store historical data for individual nodes
+                // Loop through the latest data and update the individual charts
                 for (const nodeId in nodesData) {
                     const nodeData = nodesData[nodeId];
                     const nodeTimestamp = new Date(nodeData.last_seen_by_flask);
-
-                    // Ensure the data structure exists for the node
-                    if (!individualNodeData[nodeId]) {
-                        individualNodeData[nodeId] = {
-                            timestamps: [], rain: [], soil: [], vibration: [],
-                            iso_score: [], river_score: [], warning_level_numerical: []
-                        };
-                    }
-
-                    // Add new data point to the historical arrays
-                    const nodeHistory = individualNodeData[nodeId];
-                    nodeHistory.timestamps.push(nodeTimestamp);
-                    nodeHistory.rain.push(nodeData.rain);
-                    nodeHistory.soil.push(nodeData.soil);
-                    nodeHistory.vibration.push(nodeData.vibration);
-                    nodeHistory.iso_score.push(nodeData.iso_score);
-                    nodeHistory.river_score.push(nodeData.river_score);
-                    nodeHistory.warning_level_numerical.push(nodeData.warning_level_numerical);
-
-                    // Trim old data to maintain MAX_DATA_POINTS
-                    if (nodeHistory.timestamps.length > MAX_DATA_POINTS) {
-                        Object.keys(nodeHistory).forEach(key => nodeHistory[key].shift());
-                    }
-                    
-                    // Update the chart for this specific node
-                    updateIndividualNodeChart(nodeId);
+                    updateIndividualNodeChart(nodeId, nodeTimestamp, nodeData);
                 }
-                // **FIX ENDS HERE**
 
             } catch (error) {
                 console.error('Error fetching sensor data:', error);
