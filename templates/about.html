@@ -3,127 +3,70 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NoNet | About</title>
-  <!-- Tailwind CSS for styling -->
+  <title>NoNet | About The Project</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Inter font for a clean look -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    /* Custom CSS for dark mode and font */
-    body {
-      font-family: 'Inter', sans-serif;
-      transition: background-color 0.3s ease, color 0.3s ease;
-    }
-    :root {
-      --bg-color: #f7f9fb;
-      --text-color: #333;
-      --card-bg: #fff;
-      --nav-bg: #1e3a8a; /* Dark blue for nav */
-      --nav-text: white;
-      --nav-hover-bg: #2563eb; /* Blue-600 */
-      --nav-active-text: #fcd34d; /* Amber-300 */
-    }
-    body.dark-mode {
-      --bg-color: #1c1e21;
-      --text-color: #f0f0f0;
-      --card-bg: #2a2d31;
-      --nav-bg: #1a202c; /* Darker for dark mode nav */
-      --nav-text: #cbd5e1;
-      --nav-hover-bg: #2d3748;
-      --nav-active-text: #fcd34d;
-    }
-
-    /* Styles for the main content area */
-    main {
-      max-width: 900px;
-      margin: auto;
-      padding: 20px;
-    }
+    body { font-family: 'Inter', sans-serif; }
     .feature {
-      background-color: var(--card-bg);
-      padding: 16px;
+      background-color: white;
+      padding: 24px;
       margin-bottom: 16px;
       border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      border: 1px solid #e5e7eb;
     }
     .feature h3 {
       margin-top: 0;
-      color: var(--text-color); /* Ensure heading color adapts */
-    }
-    .feature p {
-      color: var(--text-color); /* Ensure paragraph color adapts */
-    }
-    /* Theme toggle button styling */
-    #themeIcon {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      cursor: pointer;
-      color: var(--nav-text); /* Matches nav text color */
-      transition: color 0.3s ease;
-      z-index: 10; /* Ensure it's above other elements */
+      color: #1e3a8a;
+      font-size: 1.25rem;
+      font-weight: 700;
     }
   </style>
 </head>
-<body class="bg-[var(--bg-color)] text-[var(--text-color)] min-h-screen flex flex-col">
-  <button id="themeIcon">🌙</button>
-
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
   <!-- Navigation Bar -->
-  <nav class="bg-[var(--nav-bg)] p-4 shadow-md flex justify-center relative">
+  <nav class="bg-blue-800 p-4 shadow-md flex justify-center relative w-full">
     <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center">
-      <div class="text-2xl font-bold text-[var(--nav-text)] mb-2 sm:mb-0">NoNet</div>
-      <div class="flex space-x-4">
-        <a href="/" class="text-[var(--nav-text)] font-semibold hover:text-[var(--nav-active-text)] py-2 px-3 rounded-md transition duration-300 hover:bg-[var(--nav-hover-bg)]">Home</a>
-        <a href="/dashboard" class="text-[var(--nav-text)] font-semibold hover:text-[var(--nav-active-text)] py-2 px-3 rounded-md transition duration-300 hover:bg-[var(--nav-hover-bg)]">Dashboard</a>
-        <a href="/map" class="text-[var(--nav-text)] font-semibold hover:text-[var(--nav-active-text)] py-2 px-3 rounded-md transition duration-300 hover:bg-[var(--nav-hover-bg)]">Map</a>
-        <a href="/about" class="text-[var(--nav-active-text)] font-semibold hover:text-[var(--nav-text)] py-2 px-3 rounded-md transition duration-300 bg-[var(--nav-hover-bg)]">About</a>
-      </div>
+        <div class="text-2xl font-bold text-white mb-2 sm:mb-0">NoNet Cloud</div>
+        <div class="flex space-x-4">
+            <a href="/" class="text-white font-semibold hover:text-amber-300 py-2 px-3 rounded-md transition duration-300 hover:bg-blue-700">Home</a>
+            <a href="/dashboard" class="text-white font-semibold hover:text-amber-300 py-2 px-3 rounded-md transition duration-300 hover:bg-blue-700">Dashboard</a>
+            <a href="/map" class="text-white font-semibold hover:text-amber-300 py-2 px-3 rounded-md transition duration-300 hover:bg-blue-700">Map</a>
+            <a href="/about" class="text-amber-300 font-semibold bg-blue-600 py-2 px-3 rounded-md transition duration-300">About</a>
+        </div>
     </div>
   </nav>
 
-  <header class="text-center py-8">
-    <h1 class="text-4xl sm:text-5xl font-extrabold text-blue-700 mb-2 drop-shadow-lg">About NoNet</h1>
+  <header class="text-center py-12 bg-white">
+    <h1 class="text-5xl font-extrabold text-blue-700 mb-2">About The NoNet Project</h1>
   </header>
 
-  <main class="flex-grow">
+  <main class="flex-grow container mx-auto p-8 max-w-4xl">
     <section class="feature">
       <h3>ESP-NOW Protocol</h3>
-      <p>Ultra-low latency, high-frequency communication protocol for decentralized node-to-node communication — no Wi-Fi required.</p>
+      <p>The core of the field network uses an ultra-low latency, high-frequency communication protocol for decentralized node-to-node communication — no Wi-Fi required.</p>
     </section>
     <section class="feature">
       <h3>Cluster-Based Mesh</h3>
-      <p>Self-healing, redundant node network with failover support and alpha node reassignment logic built-in.</p>
+      <p>The system is designed as a self-healing, redundant node network with failover support and alpha node reassignment logic built-in for maximum uptime in the field.</p>
     </section>
     <section class="feature">
       <h3>Fail-Safe Logging</h3>
-      <p>On-device SD card logging enables offline capture of all sensor readings — even during outages.</p>
+      <p>Each node in the field has on-device SD card logging to enable offline capture of all sensor readings, ensuring no data is lost even during communication outages.</p>
     </section>
     <section class="feature">
       <h3>ML-Ready Insights</h3>
-      <p>Supports on-the-fly anomaly scoring and ensemble-based alert prioritization using isolation forest or rule-based logic.</p>
+      <p>The local server supports on-the-fly anomaly scoring and ensemble-based alert prioritization using isolation forest and online learning models before forwarding data to the cloud.</p>
     </section>
     <section class="feature">
-      <h3>Custom Real-Time Dashboard</h3>
-      <p>Modular Flask-based GUI with charts, maps, event feed, and CSV download support — runs even without cloud connectivity.</p>
+      <h3>Local & Cloud Dashboards</h3>
+      <p>The project features two distinct user interfaces: a local dashboard for in-field control and diagnostics, and this cloud-based platform for remote monitoring and data visualization.</p>
     </section>
   </main>
 
-  <script>
-    const themeIcon = document.getElementById("themeIcon");
-    // Set initial theme icon based on current mode
-    if (document.body.classList.contains("dark-mode")) {
-      themeIcon.textContent = "☀️";
-    } else {
-      themeIcon.textContent = "🌙";
-    }
-
-    themeIcon.addEventListener("click", function () {
-      document.body.classList.toggle("dark-mode");
-      themeIcon.textContent = document.body.classList.contains("dark-mode") ? "☀️" : "🌙";
-    });
-  </script>
+  <footer class="bg-gray-800 text-white text-center p-4 mt-8">
+    <p>&copy; 2024 NoNet Project. All rights reserved.</p>
+  </footer>
 </body>
 </html>
