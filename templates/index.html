@@ -387,23 +387,26 @@
         /**
          * Updates the charts for a specific individual node with new data.
          */
-        function updateIndividualNodeChart(nodeId, timestamp, nodeData) {
-            if (!individualChartInstances[`sensor_${nodeId}`]) {
-                initializeIndividualNodeChart(nodeId);
-            }
+        function updateIndividualNodeChart(nodeId) {
+            const nodeData = individualNodeData[nodeId];
+            if (!nodeData || !individualChartInstances[`sensor_${nodeId}`]) return;
+            
+            const lastTimestamp = nodeData.timestamps[nodeData.timestamps.length - 1];
 
-            const update = (chartKey, y_data, trace_index) => {
-                if (individualChartInstances[chartKey]) {
-                    Plotly.extendTraces(individualChartInstances[chartKey], { x: [[timestamp]], y: [[y_data]] }, [trace_index], MAX_DATA_POINTS);
+            const update = (chartKey, y_data_key, trace_index) => {
+                const chart = individualChartInstances[chartKey];
+                const y_data = nodeData[y_data_key][nodeData[y_data_key].length - 1];
+                if (chart) {
+                    Plotly.extendTraces(chart, { x: [[lastTimestamp]], y: [[y_data]] }, [trace_index], MAX_DATA_POINTS);
                 }
             };
             
-            update(`sensor_${nodeId}`, nodeData.rain, 0);
-            update(`sensor_${nodeId}`, nodeData.soil, 1);
-            update(`sensor_${nodeId}`, nodeData.vibration, 2);
-            update(`iso_${nodeId}`, nodeData.iso_score, 0);
-            update(`river_${nodeId}`, nodeData.river_score, 0);
-            update(`warning_${nodeId}`, nodeData.warning_level_numerical, 0);
+            update(`sensor_${nodeId}`, 'rain', 0);
+            update(`sensor_${nodeId}`, 'soil', 1);
+            update(`sensor_${nodeId}`, 'vibration', 2);
+            update(`iso_${nodeId}`, 'iso_score', 0);
+            update(`river_${nodeId}`, 'river_score', 0);
+            update(`warning_${nodeId}`, 'warning_level_numerical', 0);
         }
 
         /**
@@ -411,7 +414,7 @@
          */
         function manageIndividualNodeDisplays(currentNodes) {
             const currentNodeIds = Object.keys(currentNodes);
-            const displayedNodeIds = new Set(Object.keys(individualNodeData));
+            const displayedNodeIds = new Set(Object.keys(individualChartInstances).map(k => k.split('_')[1]));
 
             let gridClasses = 'grid gap-6';
             if (currentNodeIds.length === 1) gridClasses += ' grid-cols-1';
@@ -431,15 +434,14 @@
             displayedNodeIds.forEach(nodeId => {
                 if (!currentNodeIds.includes(nodeId)) {
                     document.getElementById(`nodeCard_${nodeId}`)?.remove();
-                    delete individualNodeData[nodeId];
                     ['sensor_', 'iso_', 'river_', 'warning_'].forEach(prefix => delete individualChartInstances[prefix + nodeId]);
+                    delete individualNodeData[nodeId];
                 }
             });
 
             // Add or update nodes that are active
             currentNodeIds.forEach(nodeId => {
-                if (!displayedNodeIds.has(nodeId)) {
-                    individualNodeData[nodeId] = {}; // Mark as known
+                if (!individualChartInstances[`sensor_${nodeId}`]) {
                     const nodeCard = document.createElement('div');
                     nodeCard.id = `nodeCard_${nodeId}`;
                     nodeCard.className = 'bg-[var(--card-bg)] p-4 rounded-lg shadow-md border border-gray-200';
@@ -551,24 +553,19 @@
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
 
-                // If no data has been pushed yet, show a waiting message.
                 if (!data.last_updated) {
                     setConnectionStatus(false, 'Waiting for data...', null);
                     return;
                 }
                 
-                // If the timestamp hasn't changed, don't re-render anything.
                 if (data.last_updated === lastKnownUpdateTimestamp) {
-                    // Still update the status to show we are connected
                     setConnectionStatus(true, 'Receiving Data', data.last_updated);
                     return; 
                 }
                 
                 lastKnownUpdateTimestamp = data.last_updated;
-
                 setConnectionStatus(true, 'Receiving Data', data.last_updated);
 
-                // Process and update all UI components with the new data
                 const overallData = data.overall_data;
                 const nodesData = data.nodes;
                 const overallTimestamp = new Date(overallData.timestamp);
@@ -579,11 +576,39 @@
                 updateNodeDataTable(nodesData);
                 updateActiveNodesList(Object.keys(nodesData));
 
+                // **FIX STARTS HERE**
+                // Process and store historical data for individual nodes
                 for (const nodeId in nodesData) {
                     const nodeData = nodesData[nodeId];
                     const nodeTimestamp = new Date(nodeData.last_seen_by_flask);
-                    updateIndividualNodeChart(nodeId, nodeTimestamp, nodeData);
+
+                    // Ensure the data structure exists for the node
+                    if (!individualNodeData[nodeId]) {
+                        individualNodeData[nodeId] = {
+                            timestamps: [], rain: [], soil: [], vibration: [],
+                            iso_score: [], river_score: [], warning_level_numerical: []
+                        };
+                    }
+
+                    // Add new data point to the historical arrays
+                    const nodeHistory = individualNodeData[nodeId];
+                    nodeHistory.timestamps.push(nodeTimestamp);
+                    nodeHistory.rain.push(nodeData.rain);
+                    nodeHistory.soil.push(nodeData.soil);
+                    nodeHistory.vibration.push(nodeData.vibration);
+                    nodeHistory.iso_score.push(nodeData.iso_score);
+                    nodeHistory.river_score.push(nodeData.river_score);
+                    nodeHistory.warning_level_numerical.push(nodeData.warning_level_numerical);
+
+                    // Trim old data to maintain MAX_DATA_POINTS
+                    if (nodeHistory.timestamps.length > MAX_DATA_POINTS) {
+                        Object.keys(nodeHistory).forEach(key => nodeHistory[key].shift());
+                    }
+                    
+                    // Update the chart for this specific node
+                    updateIndividualNodeChart(nodeId);
                 }
+                // **FIX ENDS HERE**
 
             } catch (error) {
                 console.error('Error fetching sensor data:', error);
