@@ -4,16 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NoNet Cloud Dashboard</title>
-    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Inter font for a clean look -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Plotly.js from a CDN -->
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
     <style>
         /* Custom CSS for font and scrollbar */
         body {
-            font-family: 'Inter', sans-serif;A
+            font-family: 'Inter', sans-serif;
             transition: background-color 0.3s ease, color 0.3s ease;
         }
         :root {
@@ -89,7 +86,6 @@
 <body class="bg-[var(--bg-color)] text-[var(--text-color)] min-h-screen flex flex-col items-center">
     <button id="themeIcon">🌙</button>
 
-    <!-- Navigation Bar -->
     <nav class="bg-[var(--nav-bg)] p-4 shadow-md flex justify-center relative w-full">
         <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center">
             <div class="text-2xl font-bold text-[var(--nav-text)] mb-2 sm:mb-0">NoNet Cloud</div>
@@ -102,7 +98,6 @@
         </div>
     </nav>
 
-    <!-- Header Section -->
     <header class="w-full max-w-6xl text-center mb-8 p-4 sm:p-6">
         <h1 class="text-4xl sm:text-5xl font-extrabold text-blue-700 mb-2 drop-shadow-lg">
             NoNet Cloud Sensor Dashboard
@@ -110,21 +105,16 @@
         <p class="text-lg text-gray-600">Live monitoring of remotely forwarded sensor data</p>
     </header>
 
-    <!-- Main Content Area -->
     <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 sm:p-6">
 
-        <!-- Overall Sensor Data Section (Left/Top) -->
         <section class="lg:col-span-2 bg-[var(--card-bg)] p-6 rounded-xl shadow-lg border border-gray-200">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Overall Sensor Data (Average)</h2>
             <div id="overallSensorChart" class="w-full h-80 sm:h-96 bg-gray-50 rounded-lg border border-gray-200">
-                <!-- Plotly chart will be rendered here -->
-            </div>
+                </div>
             <div id="overallSensorMetrics" class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 text-center">
-                <!-- Live metrics will be updated here by JavaScript -->
-            </div>
+                </div>
         </section>
 
-        <!-- Status & Last Update Section (Right/Top) -->
         <section class="lg:col-span-1 bg-[var(--card-bg)] p-6 rounded-xl shadow-lg border border-gray-200 flex flex-col justify-between">
             <div>
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">System Status</h2>
@@ -141,13 +131,11 @@
             <div class="mt-6 pt-4 border-t border-gray-200">
                 <h3 class="text-xl font-bold text-gray-800 mb-3">Active Nodes</h3>
                 <div id="activeNodesList" class="max-h-40 overflow-y-auto pr-2">
-                    <!-- Active nodes will be listed here by JavaScript -->
                     <p class="text-gray-500">No nodes detected yet...</p>
                 </div>
             </div>
         </section>
 
-        <!-- Overall Anomaly Data Section -->
         <section class="lg:col-span-3 bg-[var(--card-bg)] p-6 rounded-xl shadow-lg border border-gray-200">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Overall Anomaly Scores (Average)</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -156,11 +144,9 @@
                 <div id="overallWarningLevelChart" class="w-full h-64 bg-gray-50 rounded-lg border border-gray-200"></div>
             </div>
             <div id="overallAnomalyMetrics" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 text-center">
-                <!-- Live anomaly metrics will be updated here by JavaScript -->
-            </div>
+                </div>
         </section>
 
-        <!-- Current Node Data Table -->
         <section class="lg:col-span-3 bg-[var(--card-bg)] p-6 rounded-xl shadow-lg border border-gray-200">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Current Node Data Table</h2>
             <div class="overflow-x-auto">
@@ -180,18 +166,15 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Table rows will be dynamically populated here -->
                         <tr><td colspan="10" class="text-center text-gray-500 py-4">No node data available.</td></tr>
                     </tbody>
                 </table>
             </div>
         </section>
 
-        <!-- Individual Node Data Section (Bottom) -->
         <section class="lg:col-span-3 bg-[var(--card-bg)] p-6 rounded-xl shadow-lg border border-gray-200">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Individual Node Data & Anomaly Scores</h2>
             <div id="individualNodesContainer" class="">
-                <!-- Individual node charts will be dynamically added here by JavaScript -->
                 <div class="p-4 bg-gray-50 rounded-lg text-center text-gray-500 border border-gray-200">
                     No individual node data available yet.
                 </div>
@@ -200,7 +183,6 @@
 
     </main>
 
-    <!-- JavaScript for fetching data and updating charts -->
     <script>
         // Configuration for the data fetching
         const API_URL = '/api/live_data'; // Endpoint for the Render server backend
@@ -252,7 +234,12 @@
         function initializeOverallSensorChart() {
             const layout = {
                 title: { text: 'Overall Sensor Trends', font: { size: 18, color: '#334155' }, y: 0.99 },
-                xaxis: { title: 'Time', showgrid: true, tickformat: '%H:%M:%S', linecolor: '#cbd5e1', linewidth: 1 },
+                xaxis: { 
+                    title: 'Time', 
+                    showgrid: true, 
+                    linecolor: '#cbd5e1', 
+                    linewidth: 1 
+                },
                 yaxis: { title: 'Value', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [0, 4095] },
                 margin: { l: 50, r: 20, t: 50, b: 50 },
                 hovermode: 'x unified',
@@ -278,7 +265,12 @@
          */
         function initializeOverallAnomalyCharts() {
             const commonLayout = {
-                xaxis: { title: 'Time', showgrid: true, tickformat: '%H:%M:%S', linecolor: '#cbd5e1', linewidth: 1 },
+                xaxis: { 
+                    title: 'Time', 
+                    showgrid: true, 
+                    linecolor: '#cbd5e1', 
+                    linewidth: 1 
+                },
                 margin: { l: 50, r: 20, t: 40, b: 50 },
                 hovermode: 'x unified',
                 responsive: true,
@@ -353,7 +345,12 @@
             if (!chartDiv || !isoChartDiv || !riverChartDiv || !warningChartDiv) return;
 
             const commonLayout = {
-                xaxis: { title: 'Time', showgrid: true, tickformat: '%H:%M:%S', linecolor: '#cbd5e1', linewidth: 1 },
+                xaxis: { 
+                    title: 'Time', 
+                    showgrid: true, 
+                    linecolor: '#cbd5e1', 
+                    linewidth: 1 
+                },
                 margin: { l: 50, r: 20, t: 40, b: 50 },
                 hovermode: 'x unified',
                 responsive: true,
@@ -503,7 +500,8 @@
             } else {
                 nodeIds.forEach(nodeId => {
                     const node = nodesData[nodeId];
-                    const timestamp = node.last_seen_by_flask ? new Date(node.last_seen_by_flask).toLocaleTimeString() : 'N/A';
+                    // Use the reliable server timestamp for display
+                    const timestamp = new Date(lastKnownUpdateTimestamp).toLocaleTimeString();
                     const format = (val, digits = 0) => (val !== undefined && val !== null ? val.toFixed(digits) : 'N/A');
                     tableHtml += `
                         <tr>
@@ -553,7 +551,7 @@
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
 
-                if (!data.last_updated) {
+                if (!data || !data.last_updated) {
                     setConnectionStatus(false, 'Waiting for data...', null);
                     return;
                 }
@@ -566,22 +564,22 @@
                 lastKnownUpdateTimestamp = data.last_updated;
                 setConnectionStatus(true, 'Receiving Data', data.last_updated);
 
-                // Process and update all UI components with the new data
+                // ### FIX: Use the single, reliable timestamp from the server for this entire update cycle ###
+                const updateTimestamp = new Date(data.last_updated);
+
                 const overallData = data.overall_data;
                 const nodesData = data.nodes;
-                const overallTimestamp = new Date(overallData.timestamp);
-
-                updateOverallCharts(overallTimestamp, overallData);
+                
+                // Update UI components
+                updateOverallCharts(updateTimestamp, overallData);
                 updateOverallMetrics(overallData);
                 manageIndividualNodeDisplays(nodesData);
                 updateNodeDataTable(nodesData);
                 updateActiveNodesList(Object.keys(nodesData));
 
-                // **FIX STARTS HERE**
                 // Process and store historical data for individual nodes
                 for (const nodeId in nodesData) {
                     const nodeData = nodesData[nodeId];
-                    const nodeTimestamp = new Date(nodeData.last_seen_by_flask);
 
                     // Ensure the data structure exists for the node
                     if (!individualNodeData[nodeId]) {
@@ -591,9 +589,9 @@
                         };
                     }
 
-                    // Add new data point to the historical arrays
+                    // Add new data point to the historical arrays using the correct timestamp
                     const nodeHistory = individualNodeData[nodeId];
-                    nodeHistory.timestamps.push(nodeTimestamp);
+                    nodeHistory.timestamps.push(updateTimestamp); // Use the unified timestamp
                     nodeHistory.rain.push(nodeData.rain);
                     nodeHistory.soil.push(nodeData.soil);
                     nodeHistory.vibration.push(nodeData.vibration);
@@ -609,7 +607,6 @@
                     // Update the chart for this specific node
                     updateIndividualNodeChart(nodeId);
                 }
-                // **FIX ENDS HERE**
 
             } catch (error) {
                 console.error('Error fetching sensor data:', error);
