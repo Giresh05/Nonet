@@ -1,6 +1,7 @@
 Flask
 requests
+joblib
+numpy
 scikit-learn
 river
-numpy
 gunicorn
