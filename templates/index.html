@@ -725,10 +725,7 @@
         function manageIndividualNodeDisplays(currentNodes) {
             const currentNodeIds = Object.keys(currentNodes);
             // Get node IDs currently displayed on the page (from any chart type)
-            const displayedNodeIds = new Set();
-            for (const key in individualNodeData) {
-                displayedNodeIds.add(key);
-            }
+            const displayedNodeIds = new Set(Object.keys(individualNodeData));
 
             let gridClasses = 'grid gap-6';
             if (currentNodeIds.length === 1) {
@@ -742,8 +739,8 @@
             if (currentNodeIds.length > 0) {
                 individualNodesContainer.className = gridClasses;
                 const noDataMessage = individualNodesContainer.querySelector('.text-gray-500');
-                if (noDataMessage && noDataMessage.textContent.includes('No individual node data available yet')) {
-                    individualNodesContainer.innerHTML = '';
+                if (noDataMessage) {
+                    noDataMessage.parentElement.remove();
                 }
             } else {
                 individualNodesContainer.className = 'flex items-center justify-center h-64 w-full';
@@ -760,18 +757,18 @@
                     const nodeCard = document.getElementById(`nodeCard_${nodeId}`);
                     if (nodeCard) {
                         nodeCard.remove();
-                        delete individualNodeData[nodeId];
-                        // Remove all associated Plotly instances
-                        delete individualChartInstances[`sensor_${nodeId}`];
-                        delete individualChartInstances[`iso_${nodeId}`];
-                        delete individualChartInstances[`river_${nodeId}`];
-                        delete individualChartInstances[`warning_${nodeId}`];
-                        console.log(`Removed display for node: ${nodeId}`);
                     }
+                    delete individualNodeData[nodeId];
+                    // Remove all associated Plotly instances
+                    delete individualChartInstances[`sensor_${nodeId}`];
+                    delete individualChartInstances[`iso_${nodeId}`];
+                    delete individualChartInstances[`river_${nodeId}`];
+                    delete individualChartInstances[`warning_${nodeId}`];
+                    console.log(`Removed display for node: ${nodeId}`);
                 }
             });
 
-            // Add or update nodes that are active
+            // Add new node cards if they don't exist
             currentNodeIds.forEach(nodeId => {
                 if (!displayedNodeIds.has(nodeId)) {
                     // Create the HTML structure for the new node
@@ -788,12 +785,7 @@
                     `;
                     individualNodesContainer.appendChild(nodeCard);
                     console.log(`Added display for new node: ${nodeId}`);
-
-                    // ****** FIX IS HERE: DO NOT INITIALIZE CHART HERE ******
-                    // initializeIndividualNodeChart(nodeId); // <-- THIS LINE WAS REMOVED
                 }
-                // Update metrics for existing or newly added nodes
-                updateIndividualNodeMetrics(nodeId, currentNodes[nodeId]);
             });
 
             // After adding/removing nodes and updating grid, relayout all active charts
@@ -812,6 +804,7 @@
         function updateIndividualNodeMetrics(nodeId, latestData) {
             const nodeMetricsDiv = document.getElementById(`nodeMetrics_${nodeId}`);
             if (nodeMetricsDiv) {
+                const timestamp = new Date(latestData.timestamp || latestData.last_seen_by_flask).toLocaleTimeString();
                 nodeMetricsDiv.innerHTML = `
                     <div class="p-2 bg-blue-50 rounded-md text-sm">
                         <p class="text-blue-700 font-semibold">Rain:</p>
@@ -875,7 +868,7 @@
             } else {
                 nodeIds.forEach(nodeId => {
                     const node = nodesData[nodeId];
-                    const timestamp = new Date(node.timestamp).toLocaleTimeString();
+                    const timestamp = new Date(node.timestamp || node.last_seen_by_flask).toLocaleTimeString();
                     tableHtml += `
                         <tr>
                             <td>${nodeId}</td>
@@ -1189,30 +1182,27 @@
                 updateOverallAnomalyCharts(); // New
                 updateOverallMetrics(data.overall_data);
 
+                // --- START OF FIX ---
                 // Process Individual Node Data
-                manageIndividualNodeDisplays(data.nodes); // Add/remove node cards as needed
-                updateNodeDataTable(data.nodes); // Update the new table
-                
-                // ****** FIX IS HERE: THIS IS THE NEW LOGIC ******
-                const activeNodeIds = Object.keys(data.nodes);
-                updateActiveNodesList(activeNodeIds);
+                manageIndividualNodeDisplays(data.nodes);
+                updateNodeDataTable(data.nodes);
+                updateActiveNodesList(Object.keys(data.nodes));
 
                 for (const nodeId in data.nodes) {
                     const nodeData = data.nodes[nodeId];
-                    const nodeTimestamp = new Date(nodeData.timestamp);
+                    const nodeTimestamp = new Date(nodeData.timestamp || nodeData.last_seen_by_flask);
                     
-                    // Check if this is the first time we're seeing this node
                     const isNewNode = !individualNodeData[nodeId];
 
                     if (isNewNode) {
-                        // If it's new, create its data structure
+                        // If it's a new node, create its data structure before doing anything else
                         individualNodeData[nodeId] = {
                             timestamps: [], rain: [], soil: [], vibration: [],
                             iso_score: [], river_score: [], warning_level_numerical: []
                         };
                     }
 
-                    // Push the latest data into the arrays
+                    // Add the new data point to the node's history
                     individualNodeData[nodeId].timestamps.push(nodeTimestamp);
                     individualNodeData[nodeId].rain.push(nodeData.rain);
                     individualNodeData[nodeId].soil.push(nodeData.soil);
@@ -1221,23 +1211,25 @@
                     individualNodeData[nodeId].river_score.push(nodeData.river_score);
                     individualNodeData[nodeId].warning_level_numerical.push(nodeData.warning_level_numerical);
 
-                    // Trim old data
+                    // Trim old data points if the history is too long
                     if (individualNodeData[nodeId].timestamps.length > MAX_DATA_POINTS) {
                         Object.keys(individualNodeData[nodeId]).forEach(key => {
                             individualNodeData[nodeId][key].shift();
                         });
                     }
 
-                    // Now, decide whether to create the chart or just update it
+                    // If it was a new node, initialize its chart now that it has data
                     if (isNewNode) {
-                        initializeIndividualNodeChart(nodeId); // Create the chart with the first data point
+                        initializeIndividualNodeChart(nodeId);
                     } else {
-                        updateIndividualNodeChart(nodeId); // Update the existing chart
+                        // Otherwise, just update the existing chart
+                        updateIndividualNodeChart(nodeId);
                     }
                     
+                    // Always update the metrics display
                     updateIndividualNodeMetrics(nodeId, nodeData);
                 }
-                // ****** END OF FIX ******
+                // --- END OF FIX ---
 
             } catch (error) {
                 console.error('Error fetching sensor data:', error);
