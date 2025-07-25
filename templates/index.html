@@ -13,7 +13,7 @@
     <style>
         /* Custom CSS for font and scrollbar */
         body {
-            font-family: 'Inter', sans-serif;A
+            font-family: 'Inter', sans-serif;
             transition: background-color 0.3s ease, color 0.3s ease;
         }
         :root {
@@ -577,7 +577,7 @@
                 updateNodeDataTable(nodesData);
                 updateActiveNodesList(Object.keys(nodesData));
 
-                // **FIX STARTS HERE**
+                // ### START OF FIX ###
                 // Process and store historical data for individual nodes
                 for (const nodeId in nodesData) {
                     const nodeData = nodesData[nodeId];
@@ -609,7 +609,7 @@
                     // Update the chart for this specific node
                     updateIndividualNodeChart(nodeId);
                 }
-                // **FIX ENDS HERE**
+                // ### END OF FIX ###
 
             } catch (error) {
                 console.error('Error fetching sensor data:', error);
