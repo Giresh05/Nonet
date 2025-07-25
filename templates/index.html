@@ -8,8 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Inter font for a clean look -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Plotly.js from a CDN -->
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <!-- Plotly.js from a CDN (Updated to a newer version) -->
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
     <style>
         /* Custom CSS for font and scrollbar */
         body {
@@ -577,7 +577,6 @@
                 updateNodeDataTable(nodesData);
                 updateActiveNodesList(Object.keys(nodesData));
 
-                // ### START OF FIX ###
                 // Process and store historical data for individual nodes
                 for (const nodeId in nodesData) {
                     const nodeData = nodesData[nodeId];
@@ -609,7 +608,6 @@
                     // Update the chart for this specific node
                     updateIndividualNodeChart(nodeId);
                 }
-                // ### END OF FIX ###
 
             } catch (error) {
                 console.error('Error fetching sensor data:', error);
