@@ -20,7 +20,7 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 #                        we fetch this from an environment variable on the server.
 # FRONTEND_DATA_RETENTION_SECONDS: How long (in seconds) to keep data for the charts.
 #                                  60 seconds means the charts will show a 1-minute history.
-RENDER_API_SECRET_KEY = os.environ.get('RENDER_API_SECRET_KEY', 'default-secret-key-for-local-testing')
+RENDER_API_SECRET_KEY = 'SensorNet_Alpha_77!'
 FRONTEND_DATA_RETENTION_SECONDS = 60
 
 # ==============================================================================
