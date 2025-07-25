@@ -1,11 +1,11 @@
 import os
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
 from functools import wraps
 import threading
 from datetime import datetime
 
-# Initialize Flask App
-app = Flask(__name__)
+# Initialize Flask App, specifying the folders for templates and static files
+app = Flask(__name__, template_folder='templates', static_folder='static')
 
 # --- Configuration ---
 # It's best practice to get the secret key from an environment variable on Render.
@@ -77,20 +77,32 @@ def submit_data():
 def get_live_data():
     """
     This endpoint provides the latest stored data to any client (e.g., a cloud dashboard).
-    This route can be public or you can add the @api_key_required decorator
-    if you want to protect access to the data as well.
     """
     with data_lock:
         # Return a copy of the latest data
         return jsonify(latest_data_store)
 
+# --- Page Serving Routes ---
+
 @app.route('/')
-def index():
-    """
-    A simple index route to confirm the server is running.
-    You will replace this with `render_template` once you have HTML files.
-    """
-    return "<h1>NoNet Render Server is Running</h1><p>Use the /api/submit_data endpoint to post data.</p>"
+def home():
+    """Serves the home page."""
+    return render_template('home.html')
+
+@app.route('/dashboard')
+def dashboard():
+    """Serves the main dashboard page."""
+    return render_template('index.html')
+
+@app.route('/map')
+def map_page():
+    """Serves the map HTML page."""
+    return render_template('map.html')
+
+@app.route('/about')
+def about():
+    """Serves the about page."""
+    return render_template('about.html')
 
 # --- Main Execution Block ---
 # This block is standard for deploying Flask apps on services like Render.
