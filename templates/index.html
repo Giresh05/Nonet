@@ -109,10 +109,8 @@
 
         <section class="lg:col-span-2 bg-[var(--card-bg)] p-6 rounded-xl shadow-lg border border-gray-200">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Overall Sensor Data (Average)</h2>
-            <div id="overallSensorChart" class="w-full h-80 sm:h-96 bg-gray-50 rounded-lg border border-gray-200">
-                </div>
-            <div id="overallSensorMetrics" class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 text-center">
-                </div>
+            <div id="overallSensorChart" class="w-full h-80 sm:h-96 bg-gray-50 rounded-lg border border-gray-200"></div>
+            <div id="overallSensorMetrics" class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 text-center"></div>
         </section>
 
         <section class="lg:col-span-1 bg-[var(--card-bg)] p-6 rounded-xl shadow-lg border border-gray-200 flex flex-col justify-between">
@@ -143,8 +141,7 @@
                 <div id="overallRiverScoreChart" class="w-full h-64 bg-gray-50 rounded-lg border border-gray-200"></div>
                 <div id="overallWarningLevelChart" class="w-full h-64 bg-gray-50 rounded-lg border border-gray-200"></div>
             </div>
-            <div id="overallAnomalyMetrics" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 text-center">
-                </div>
+            <div id="overallAnomalyMetrics" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 text-center"></div>
         </section>
 
         <section class="lg:col-span-3 bg-[var(--card-bg)] p-6 rounded-xl shadow-lg border border-gray-200">
@@ -411,7 +408,7 @@
          */
         function manageIndividualNodeDisplays(currentNodes) {
             const currentNodeIds = Object.keys(currentNodes);
-            const displayedNodeIds = new Set(Object.keys(individualChartInstances).map(k => k.split('_')[1]));
+            const knownNodeIds = Object.keys(individualNodeData);
 
             let gridClasses = 'grid gap-6';
             if (currentNodeIds.length === 1) gridClasses += ' grid-cols-1';
@@ -428,7 +425,7 @@
             }
 
             // Remove nodes that are no longer active
-            displayedNodeIds.forEach(nodeId => {
+            knownNodeIds.forEach(nodeId => {
                 if (!currentNodeIds.includes(nodeId)) {
                     document.getElementById(`nodeCard_${nodeId}`)?.remove();
                     ['sensor_', 'iso_', 'river_', 'warning_'].forEach(prefix => delete individualChartInstances[prefix + nodeId]);
@@ -436,9 +433,10 @@
                 }
             });
 
-            // Add or update nodes that are active
+            // Add nodes that are new
             currentNodeIds.forEach(nodeId => {
-                if (!individualChartInstances[`sensor_${nodeId}`]) {
+                if (!knownNodeIds.includes(nodeId)) {
+                    // Create the HTML structure for the new node
                     const nodeCard = document.createElement('div');
                     nodeCard.id = `nodeCard_${nodeId}`;
                     nodeCard.className = 'bg-[var(--card-bg)] p-4 rounded-lg shadow-md border border-gray-200';
@@ -450,8 +448,17 @@
                         <div id="nodeWarningLevelChart_${nodeId}" class="w-full h-48 bg-gray-50 rounded-lg border border-gray-200 mb-4"></div>
                         <div id="nodeMetrics_${nodeId}" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4 text-center"></div>`;
                     individualNodesContainer.appendChild(nodeCard);
+                    
+                    // Create new data structure for the node
+                    individualNodeData[nodeId] = {
+                        timestamps: [], rain: [], soil: [], vibration: [],
+                        iso_score: [], river_score: [], warning_level_numerical: []
+                    };
+
+                    // Initialize the charts for the new node
                     initializeIndividualNodeChart(nodeId);
                 }
+                // Always update metrics for currently active nodes
                 updateIndividualNodeMetrics(nodeId, currentNodes[nodeId]);
             });
 
@@ -564,34 +571,32 @@
                 lastKnownUpdateTimestamp = data.last_updated;
                 setConnectionStatus(true, 'Receiving Data', data.last_updated);
 
-                // ### FIX: Use the single, reliable timestamp from the server for this entire update cycle ###
                 const updateTimestamp = new Date(data.last_updated);
-
                 const overallData = data.overall_data;
                 const nodesData = data.nodes;
                 
-                // Update UI components
+                // Manage the display of individual node cards
+                manageIndividualNodeDisplays(nodesData);
+
+                // Update overall charts and metrics
                 updateOverallCharts(updateTimestamp, overallData);
                 updateOverallMetrics(overallData);
-                manageIndividualNodeDisplays(nodesData);
+                
+                // Update node table and active nodes list
                 updateNodeDataTable(nodesData);
                 updateActiveNodesList(Object.keys(nodesData));
 
-                // Process and store historical data for individual nodes
+                // Process and store historical data for all individual nodes
                 for (const nodeId in nodesData) {
                     const nodeData = nodesData[nodeId];
-
-                    // Ensure the data structure exists for the node
-                    if (!individualNodeData[nodeId]) {
-                        individualNodeData[nodeId] = {
-                            timestamps: [], rain: [], soil: [], vibration: [],
-                            iso_score: [], river_score: [], warning_level_numerical: []
-                        };
-                    }
-
-                    // Add new data point to the historical arrays using the correct timestamp
                     const nodeHistory = individualNodeData[nodeId];
-                    nodeHistory.timestamps.push(updateTimestamp); // Use the unified timestamp
+
+                    // This check is now redundant because manageIndividualNodeDisplays ensures the object exists,
+                    // but it's safe to keep.
+                    if (!nodeHistory) continue;
+
+                    // Add new data point to the historical arrays
+                    nodeHistory.timestamps.push(updateTimestamp);
                     nodeHistory.rain.push(nodeData.rain);
                     nodeHistory.soil.push(nodeData.soil);
                     nodeHistory.vibration.push(nodeData.vibration);
@@ -623,7 +628,7 @@
 
             const themeIcon = document.getElementById("themeIcon");
             if (document.body.classList.contains("dark-mode")) themeIcon.textContent = "☀️";
-            else themeIcon.textContent = "🌙";
+            else themeIcon.textContent = "�";
 
             themeIcon.addEventListener("click", function () {
                 document.body.classList.toggle("dark-mode");
