@@ -3,10 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NoNet Cloud Dashboard</title>
+    <title>ESP32 Sensor & Anomaly Dashboard</title>
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter font for a clean look -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <!-- Local Plotly.js -->
+    <script src="/static/lib/plotly-2.30.0.min.js"></script>
     <style>
         /* Custom CSS for font and scrollbar */
         body {
@@ -86,9 +89,10 @@
 <body class="bg-[var(--bg-color)] text-[var(--text-color)] min-h-screen flex flex-col items-center">
     <button id="themeIcon">🌙</button>
 
+    <!-- Navigation Bar -->
     <nav class="bg-[var(--nav-bg)] p-4 shadow-md flex justify-center relative w-full">
         <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center">
-            <div class="text-2xl font-bold text-[var(--nav-text)] mb-2 sm:mb-0">NoNet Cloud</div>
+            <div class="text-2xl font-bold text-[var(--nav-text)] mb-2 sm:mb-0">NoNet</div>
             <div class="flex space-x-4">
                 <a href="/" class="text-[var(--nav-text)] font-semibold hover:text-[var(--nav-active-text)] py-2 px-3 rounded-md transition duration-300 hover:bg-[var(--nav-hover-bg)]">Home</a>
                 <a href="/dashboard" class="text-[var(--nav-active-text)] font-semibold hover:text-[var(--nav-text)] py-2 px-3 rounded-md transition duration-300 bg-[var(--nav-hover-bg)]">Dashboard</a>
@@ -98,21 +102,29 @@
         </div>
     </nav>
 
+    <!-- Header Section -->
     <header class="w-full max-w-6xl text-center mb-8 p-4 sm:p-6">
         <h1 class="text-4xl sm:text-5xl font-extrabold text-blue-700 mb-2 drop-shadow-lg">
-            NoNet Cloud Sensor Dashboard
+            ESP32 Sensor & Anomaly Dashboard
         </h1>
-        <p class="text-lg text-gray-600">Live monitoring of remotely forwarded sensor data</p>
+        <p class="text-lg text-gray-600">Live monitoring and anomaly detection of environmental sensors</p>
     </header>
 
+    <!-- Main Content Area -->
     <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 sm:p-6">
 
+        <!-- Overall Sensor Data Section (Left/Top) -->
         <section class="lg:col-span-2 bg-[var(--card-bg)] p-6 rounded-xl shadow-lg border border-gray-200">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Overall Sensor Data (Average)</h2>
-            <div id="overallSensorChart" class="w-full h-80 sm:h-96 bg-gray-50 rounded-lg border border-gray-200"></div>
-            <div id="overallSensorMetrics" class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 text-center"></div>
+            <div id="overallSensorChart" class="w-full h-80 sm:h-96 bg-gray-50 rounded-lg border border-gray-200">
+                <!-- Plotly chart will be rendered here -->
+            </div>
+            <div id="overallSensorMetrics" class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 text-center">
+                <!-- Live metrics will be updated here by JavaScript -->
+            </div>
         </section>
 
+        <!-- Status & Last Update Section (Right/Top) -->
         <section class="lg:col-span-1 bg-[var(--card-bg)] p-6 rounded-xl shadow-lg border border-gray-200 flex flex-col justify-between">
             <div>
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">System Status</h2>
@@ -121,19 +133,36 @@
                         <span id="connectionStatusPulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                         <span id="connectionStatusDot" class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                     </span>
-                    <p id="connectionMessage" class="text-lg font-medium text-green-700">Receiving Data</p>
+                    <p id="connectionMessage" class="text-lg font-medium text-green-700">Connected to Backend</p>
                 </div>
-                <p class="text-md text-gray-600 mb-2">Last data received from local server:</p>
+                <p class="text-md text-gray-600 mb-2">Last data update:</p>
                 <p id="lastUpdateTime" class="text-lg font-semibold text-blue-600">N/A</p>
             </div>
             <div class="mt-6 pt-4 border-t border-gray-200">
                 <h3 class="text-xl font-bold text-gray-800 mb-3">Active Nodes</h3>
                 <div id="activeNodesList" class="max-h-40 overflow-y-auto pr-2">
+                    <!-- Active nodes will be listed here by JavaScript -->
                     <p class="text-gray-500">No nodes detected yet...</p>
                 </div>
             </div>
+            
+            <!-- Mode Control Section -->
+            <div class="mt-6 pt-4 border-t border-gray-200">
+                <h3 class="text-xl font-bold text-gray-800 mb-3">ESP32 Mode Control</h3>
+                <p id="currentModeDisplay" class="text-lg font-semibold text-purple-700 mb-4">Current Mode: Unknown</p>
+                <div class="flex flex-col space-y-3">
+                    <button id="dataCollectionBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                        Set Data Collection Mode
+                    </button>
+                    <button id="standbyBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                        Set Standby Mode
+                    </button>
+                </div>
+                <div id="modeStatusMessage" class="mt-4 text-center text-sm font-medium"></div>
+            </div>
         </section>
 
+        <!-- Overall Anomaly Data Section -->
         <section class="lg:col-span-3 bg-[var(--card-bg)] p-6 rounded-xl shadow-lg border border-gray-200">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Overall Anomaly Scores (Average)</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -141,9 +170,12 @@
                 <div id="overallRiverScoreChart" class="w-full h-64 bg-gray-50 rounded-lg border border-gray-200"></div>
                 <div id="overallWarningLevelChart" class="w-full h-64 bg-gray-50 rounded-lg border border-gray-200"></div>
             </div>
-            <div id="overallAnomalyMetrics" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 text-center"></div>
+            <div id="overallAnomalyMetrics" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 text-center">
+                <!-- Live anomaly metrics will be updated here by JavaScript -->
+            </div>
         </section>
 
+        <!-- Current Node Data Table -->
         <section class="lg:col-span-3 bg-[var(--card-bg)] p-6 rounded-xl shadow-lg border border-gray-200">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Current Node Data Table</h2>
             <div class="overflow-x-auto">
@@ -151,7 +183,7 @@
                     <thead>
                         <tr>
                             <th>Node ID</th>
-                            <th>Last Seen (Local Time)</th>
+                            <th>Timestamp</th>
                             <th>MAC Address</th>
                             <th>Rain</th>
                             <th>Soil</th>
@@ -163,15 +195,36 @@
                         </tr>
                     </thead>
                     <tbody>
+                        <!-- Table rows will be dynamically populated here -->
                         <tr><td colspan="10" class="text-center text-gray-500 py-4">No node data available.</td></tr>
                     </tbody>
                 </table>
             </div>
         </section>
 
+        <!-- CSV Logging Controls -->
+        <section class="lg:col-span-3 bg-[var(--card-bg)] p-6 rounded-xl shadow-lg border border-gray-200">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">CSV Logging Controls</h2>
+            <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 items-center justify-center">
+                <button id="startCsvBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                    Start CSV Logging
+                </button>
+                <button id="stopCsvBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                    Stop CSV Logging
+                </button>
+                <button id="downloadCsvBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                    Download CSV
+                </button>
+            </div>
+            <div id="csvStatusMessage" class="mt-4 text-center text-sm font-medium"></div>
+            <p id="csvLoggingStatus" class="mt-2 text-center text-lg font-semibold text-gray-600">CSV Logging: Inactive</p>
+        </section>
+
+        <!-- Individual Node Data Section (Bottom) -->
         <section class="lg:col-span-3 bg-[var(--card-bg)] p-6 rounded-xl shadow-lg border border-gray-200">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Individual Node Data & Anomaly Scores</h2>
             <div id="individualNodesContainer" class="">
+                <!-- Individual node charts will be dynamically added here by JavaScript -->
                 <div class="p-4 bg-gray-50 rounded-lg text-center text-gray-500 border border-gray-200">
                     No individual node data available yet.
                 </div>
@@ -180,11 +233,16 @@
 
     </main>
 
+    <!-- JavaScript for fetching data and updating charts -->
     <script>
         // Configuration for the data fetching
-        const API_URL = '/api/live_data'; // Endpoint for the Render server backend
-        const FETCH_INTERVAL_MS = 2000; // Fetch new data every 2 seconds
-        const MAX_DATA_POINTS = 60; // Keep last 60 data points for charts
+        const API_URL = '/api/live_data'; // Endpoint for your Flask backend
+        const SET_MODE_API_URL = '/api/set_mode'; // Endpoint for setting ESP32 mode
+        const START_CSV_API_URL = '/api/start_csv_logging'; // New endpoint for starting CSV logging
+        const STOP_CSV_API_URL = '/api/stop_csv_logging';   // New endpoint for stopping CSV logging
+        const DOWNLOAD_CSV_API_URL = '/api/download_csv';   // New endpoint for downloading CSV
+        const FETCH_INTERVAL_MS = 1000; // Fetch data every 1 second
+        const MAX_DATA_POINTS = 60; // Keep last 60 seconds of data for charts (60 points * 1 sec/point = 1 minute)
 
         // Data storage for overall sensor data
         let overallSensorData = {
@@ -192,65 +250,109 @@
             rain: [],
             soil: [],
             vibration: [],
-            iso_score: [],
-            river_score: [],
-            warning_level_numerical: []
+            iso_score: [], // Added for ML
+            river_score: [], // Added for ML
+            warning_level_numerical: [] // Added for ML
         };
 
         // Object to store data for individual nodes, keyed by node ID
         let individualNodeData = {};
-        
-        // Keep track of the last update timestamp to avoid re-rendering identical data
-        let lastKnownUpdateTimestamp = null;
 
         // DOM elements
         const overallSensorChartDiv = document.getElementById('overallSensorChart');
         const overallSensorMetricsDiv = document.getElementById('overallSensorMetrics');
-        const overallIsoScoreChartDiv = document.getElementById('overallIsoScoreChart');
-        const overallRiverScoreChartDiv = document.getElementById('overallRiverScoreChart');
-        const overallWarningLevelChartDiv = document.getElementById('overallWarningLevelChart');
-        const overallAnomalyMetricsDiv = document.getElementById('overallAnomalyMetrics');
+        const overallIsoScoreChartDiv = document.getElementById('overallIsoScoreChart'); // New
+        const overallRiverScoreChartDiv = document.getElementById('overallRiverScoreChart'); // New
+        const overallWarningLevelChartDiv = document.getElementById('overallWarningLevelChart'); // New
+        const overallAnomalyMetricsDiv = document.getElementById('overallAnomalyMetrics'); // New
         const individualNodesContainer = document.getElementById('individualNodesContainer');
         const lastUpdateTimeSpan = document.getElementById('lastUpdateTime');
         const connectionStatusDot = document.getElementById('connectionStatusDot');
         const connectionStatusPulse = document.getElementById('connectionStatusPulse');
         const connectionMessage = document.getElementById('connectionMessage');
         const activeNodesListDiv = document.getElementById('activeNodesList');
-        const nodeDataTableBody = document.querySelector('#nodeDataTable tbody');
+        const dataCollectionBtn = document.getElementById('dataCollectionBtn');
+        const standbyBtn = document.getElementById('standbyBtn');
+        const currentModeDisplay = document.getElementById('currentModeDisplay');
+        const modeStatusMessage = document.getElementById('modeStatusMessage');
+        const nodeDataTableBody = document.querySelector('#nodeDataTable tbody'); // New
+        const startCsvBtn = document.getElementById('startCsvBtn'); // New
+        const stopCsvBtn = document.getElementById('stopCsvBtn');   // New
+        const downloadCsvBtn = document.getElementById('downloadCsvBtn'); // New
+        const csvStatusMessage = document.getElementById('csvStatusMessage'); // New
+        const csvLoggingStatus = document.getElementById('csvLoggingStatus'); // New
+
 
         // Plotly chart instances
         let overallSensorChartInstance;
-        let overallIsoScoreChartInstance;
-        let overallRiverScoreChartInstance;
-        let overallWarningLevelChartInstance;
-        const individualChartInstances = {};
+        let overallIsoScoreChartInstance; // New
+        let overallRiverScoreChartInstance; // New
+        let overallWarningLevelChartInstance; // New
+        const individualChartInstances = {}; // Stores Plotly chart instances for each node
 
         /**
          * Initializes the overall sensor data chart using Plotly.js.
          */
         function initializeOverallSensorChart() {
             const layout = {
-                title: { text: 'Overall Sensor Trends', font: { size: 18, color: '#334155' }, y: 0.99 },
-                xaxis: { 
-                    title: 'Time', 
-                    showgrid: true, 
-                    linecolor: '#cbd5e1', 
-                    linewidth: 1 
+                title: {
+                    text: 'Overall Sensor Trends',
+                    font: { size: 18, color: '#334155' }, // slate-700
+                    y: 0.99
                 },
-                yaxis: { title: 'Value', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [0, 4095] },
+                xaxis: {
+                    title: 'Time',
+                    showgrid: true,
+                    tickformat: '%H:%M:%S',
+                    linecolor: '#cbd5e1', // slate-300
+                    linewidth: 1
+                },
+                yaxis: {
+                    title: 'Value',
+                    showgrid: true,
+                    linecolor: '#cbd5e1',
+                    linewidth: 1,
+                    range: [0, 4095] // Set Y-axis range for Rain and Soil
+                },
                 margin: { l: 50, r: 20, t: 50, b: 50 },
                 hovermode: 'x unified',
-                responsive: true,
-                paper_bgcolor: 'var(--card-bg)',
-                plot_bgcolor: 'var(--card-bg)',
-                font: { family: 'Inter, sans-serif', color: 'var(--text-color)' },
-                legend: { x: 0, y: 1.15, orientation: 'h', bgcolor: 'rgba(255, 255, 255, 0)', bordercolor: 'rgba(255, 255, 255, 0)' }
+                responsive: true, // Make chart responsive
+                paper_bgcolor: 'var(--card-bg)', /* Use CSS variable */
+                plot_bgcolor: 'var(--card-bg)', /* Use CSS variable */
+                font: {
+                    family: 'Inter, sans-serif',
+                    color: 'var(--text-color)' /* Use CSS variable */
+                },
+                legend: {
+                    x: 0, y: 1.15,
+                    orientation: 'h',
+                    bgcolor: 'rgba(255, 255, 255, 0)',
+                    bordercolor: 'rgba(255, 255, 255, 0)'
+                }
             };
 
             const data = [
-                { x: [], y: [], mode: 'lines', name: 'Rain', line: { color: '#3b82f6', width: 2 } },
-                { x: [], y: [], mode: 'lines', name: 'Soil Moisture', line: { color: '#22c55e', width: 2 } },
-                { x: [], y: [], mode: 'lines', name: 'Vibration (g)', line: { color: '#ef4444', width: 2 } }
+                {
+                    x: overallSensorData.timestamps,
+                    y: overallSensorData.rain,
+                    mode: 'lines',
+                    name: 'Rain',
+                    line: { color: '#3b82f6', width: 2 } // blue-500
+                },
+                {
+                    x: overallSensorData.timestamps,
+                    y: overallSensorData.soil,
+                    mode: 'lines',
+                    name: 'Soil Moisture',
+                    line: { color: '#22c55e', width: 2 } // green-500
+                },
+                {
+                    x: overallSensorData.timestamps,
+                    y: overallSensorData.vibration,
+                    mode: 'lines',
+                    name: 'Vibration (g)',
+                    line: { color: '#ef4444', width: 2 } // red-500
+                }
             ];
 
             Plotly.newPlot(overallSensorChartDiv, data, layout, { displayModeBar: false, responsive: true });
@@ -262,180 +364,427 @@
          */
         function initializeOverallAnomalyCharts() {
             const commonLayout = {
-                xaxis: { 
-                    title: 'Time', 
-                    showgrid: true, 
-                    linecolor: '#cbd5e1', 
-                    linewidth: 1 
+                xaxis: {
+                    title: 'Time',
+                    showgrid: true,
+                    tickformat: '%H:%M:%S',
+                    linecolor: '#cbd5e1',
+                    linewidth: 1
                 },
                 margin: { l: 50, r: 20, t: 40, b: 50 },
                 hovermode: 'x unified',
                 responsive: true,
-                paper_bgcolor: 'var(--card-bg)',
-                plot_bgcolor: 'var(--card-bg)',
-                font: { family: 'Inter, sans-serif', color: 'var(--text-color)' },
-                legend: { x: 0, y: 1.15, orientation: 'h', bgcolor: 'rgba(255, 255, 255, 0)', bordercolor: 'rgba(255, 255, 255, 0)' }
+                paper_bgcolor: 'var(--card-bg)', /* Use CSS variable */
+                plot_bgcolor: 'var(--card-bg)', /* Use CSS variable */
+                font: {
+                    family: 'Inter, sans-serif',
+                    color: 'var(--text-color)' /* Use CSS variable */
+                },
+                legend: {
+                    x: 0, y: 1.15,
+                    orientation: 'h',
+                    bgcolor: 'rgba(255, 255, 255, 0)',
+                    bordercolor: 'rgba(255, 255, 255, 0)'
+                }
             };
 
-            const isoLayout = { ...commonLayout, title: { text: 'Overall Isolation Forest Score', font: { size: 16, color: '#334155' } }, yaxis: { title: 'Score', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [-0.5, 0.5] } };
-            Plotly.newPlot(overallIsoScoreChartDiv, [{ x: [], y: [], mode: 'lines', name: 'IF Score', line: { color: '#8b5cf6', width: 2 } }], isoLayout, { displayModeBar: false, responsive: true });
+            // Isolation Forest Chart
+            const isoLayout = {
+                ...commonLayout,
+                title: { text: 'Overall Isolation Forest Score', font: { size: 16, color: '#334155' } },
+                yaxis: {
+                    title: 'Score',
+                    showgrid: true,
+                    linecolor: '#cbd5e1',
+                    linewidth: 1,
+                    range: [-0.5, 0.5] // Typical range for Isolation Forest scores
+                }
+            };
+            Plotly.newPlot(overallIsoScoreChartDiv, [{
+                x: overallSensorData.timestamps,
+                y: overallSensorData.iso_score,
+                mode: 'lines',
+                name: 'IF Score',
+                line: { color: '#8b5cf6', width: 2 } // violet-500
+            }], isoLayout, { displayModeBar: false, responsive: true });
             overallIsoScoreChartInstance = overallIsoScoreChartDiv;
 
-            const riverLayout = { ...commonLayout, title: { text: 'Overall HalfSpaceTrees Score', font: { size: 16, color: '#334155' } }, yaxis: { title: 'Score', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [0, 1] } };
-            Plotly.newPlot(overallRiverScoreChartDiv, [{ x: [], y: [], mode: 'lines', name: 'HST Score', line: { color: '#ec4899', width: 2 } }], riverLayout, { displayModeBar: false, responsive: true });
+            // River HalfSpaceTrees Chart
+            const riverLayout = {
+                ...commonLayout,
+                title: { text: 'Overall HalfSpaceTrees Score', font: { size: 16, color: '#334155' } },
+                yaxis: {
+                    title: 'Score',
+                    showgrid: true,
+                    linecolor: '#cbd5e1',
+                    linewidth: 1,
+                    range: [0, 1] // Changed range to 0-1
+                }
+            };
+            Plotly.newPlot(overallRiverScoreChartDiv, [{
+                x: overallSensorData.timestamps,
+                y: overallSensorData.river_score,
+                mode: 'lines',
+                name: 'HST Score',
+                line: { color: '#ec4899', width: 2 } // pink-500
+            }], riverLayout, { displayModeBar: false, responsive: true });
             overallRiverScoreChartInstance = overallRiverScoreChartDiv;
 
-            const warningLayout = { ...commonLayout, title: { text: 'Overall Ensemble Warning Level', font: { size: 16, color: '#334155' } }, yaxis: { title: 'Level', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [0.0, 2.0] } };
-            Plotly.newPlot(overallWarningLevelChartDiv, [{ x: [], y: [], mode: 'lines', name: 'Warning Level', line: { color: '#f97316', width: 2 } }], warningLayout, { displayModeBar: false, responsive: true });
+            // Ensemble Warning Level Chart
+            const warningLayout = {
+                ...commonLayout,
+                title: { text: 'Overall Ensemble Warning Level', font: { size: 16, color: '#334155' } },
+                yaxis: {
+                    title: 'Level',
+                    showgrid: true,
+                    linecolor: '#cbd5e1',
+                    linewidth: 1,
+                    range: [0.0, 2.0], // Changed range to 0.0-2.0
+                    // Removed tickmode, tickvals, ticktext to display numerical values
+                }
+            };
+            Plotly.newPlot(overallWarningLevelChartDiv, [{
+                x: overallSensorData.timestamps,
+                y: overallSensorData.warning_level_numerical,
+                mode: 'lines',
+                name: 'Warning Level',
+                line: { color: '#f97316', width: 2 } // orange-500
+            }], warningLayout, { displayModeBar: false, responsive: true });
             overallWarningLevelChartInstance = overallWarningLevelChartDiv;
         }
 
         /**
-         * Updates the overall charts with new data.
+         * Updates the overall sensor data chart with new data.
          */
-        function updateOverallCharts(timestamp, data) {
-            if (!overallSensorChartInstance) initializeOverallSensorChart();
-            if (!overallIsoScoreChartInstance) initializeOverallAnomalyCharts();
+        function updateOverallSensorChart() {
+            if (!overallSensorChartInstance) {
+                initializeOverallSensorChart();
+                return;
+            }
 
-            const update = (chart, y_data, trace_index) => {
-                Plotly.extendTraces(chart, { x: [[timestamp]], y: [[y_data]] }, [trace_index], MAX_DATA_POINTS);
+            const update = {
+                x: [[overallSensorData.timestamps[overallSensorData.timestamps.length - 1]],
+                    [overallSensorData.timestamps[overallSensorData.timestamps.length - 1]],
+                    [overallSensorData.timestamps[overallSensorData.timestamps.length - 1]]],
+                y: [[overallSensorData.rain[overallSensorData.rain.length - 1]],
+                    [overallSensorData.soil[overallSensorData.soil.length - 1]],
+                    [overallSensorData.vibration[overallSensorData.vibration.length - 1]]]
             };
 
-            update(overallSensorChartInstance, data.rain, 0);
-            update(overallSensorChartInstance, data.soil, 1);
-            update(overallSensorChartInstance, data.vibration, 2);
-            update(overallIsoScoreChartInstance, data.iso_score, 0);
-            update(overallRiverScoreChartInstance, data.river_score, 0);
-            update(overallWarningLevelChartInstance, data.warning_level_numerical, 0);
+            Plotly.extendTraces(overallSensorChartInstance, update, [0, 1, 2], MAX_DATA_POINTS);
         }
+
+        /**
+         * Updates the overall anomaly charts with new data.
+         */
+        function updateOverallAnomalyCharts() {
+            if (!overallIsoScoreChartInstance) {
+                initializeOverallAnomalyCharts();
+                return;
+            }
+
+            const updateIso = {
+                x: [[overallSensorData.timestamps[overallSensorData.timestamps.length - 1]]],
+                y: [[overallSensorData.iso_score[overallSensorData.iso_score.length - 1]]]
+            };
+            Plotly.extendTraces(overallIsoScoreChartInstance, updateIso, [0], MAX_DATA_POINTS);
+
+            const updateRiver = {
+                x: [[overallSensorData.timestamps[overallSensorData.timestamps.length - 1]]],
+                y: [[overallSensorData.river_score[overallSensorData.river_score.length - 1]]]
+            };
+            Plotly.extendTraces(overallRiverScoreChartInstance, updateRiver, [0], MAX_DATA_POINTS);
+
+            const updateWarning = {
+                x: [[overallSensorData.timestamps[overallSensorData.timestamps.length - 1]]],
+                y: [[overallSensorData.warning_level_numerical[overallSensorData.warning_level_numerical.length - 1]]]
+            };
+            Plotly.extendTraces(overallWarningLevelChartInstance, updateWarning, [0], MAX_DATA_POINTS);
+        }
+
 
         /**
          * Updates the live metrics display for overall sensor data.
+         * @param {object} latestData - The latest overall sensor data.
          */
         function updateOverallMetrics(latestData) {
-            const format = (val, digits = 0) => (val !== undefined && val !== null ? val.toFixed(digits) : 'N/A');
             overallSensorMetricsDiv.innerHTML = `
-                <div class="p-3 bg-blue-50 rounded-lg shadow-sm"><p class="text-sm text-blue-700 font-semibold">Rain</p><p class="text-xl font-bold text-blue-900">${format(latestData.rain)}</p></div>
-                <div class="p-3 bg-green-50 rounded-lg shadow-sm"><p class="text-sm text-green-700 font-semibold">Soil Moisture</p><p class="text-xl font-bold text-green-900">${format(latestData.soil)}</p></div>
-                <div class="p-3 bg-red-50 rounded-lg shadow-sm"><p class="text-sm text-red-700 font-semibold">Vibration (g)</p><p class="text-xl font-bold text-red-900">${format(latestData.vibration, 3)}g</p></div>`;
+                <div class="p-3 bg-blue-50 rounded-lg shadow-sm">
+                    <p class="text-sm text-blue-700 font-semibold">Rain</p>
+                    <p class="text-xl font-bold text-blue-900">${latestData.rain !== undefined ? latestData.rain.toFixed(0) : 'N/A'}</p>
+                </div>
+                <div class="p-3 bg-green-50 rounded-lg shadow-sm">
+                    <p class="text-sm text-green-700 font-semibold">Soil Moisture</p>
+                    <p class="text-xl font-bold text-green-900">${latestData.soil !== undefined ? latestData.soil.toFixed(0) : 'N/A'}</p>
+                </div>
+                <div class="p-3 bg-red-50 rounded-lg shadow-sm">
+                    <p class="text-sm text-red-700 font-semibold">Vibration (g)</p>
+                    <p class="text-xl font-bold text-red-900">${latestData.vibration !== undefined ? latestData.vibration.toFixed(3) : 'N/A'}g</p>
+                </div>
+            `;
 
             overallAnomalyMetricsDiv.innerHTML = `
-                <div class="p-3 bg-violet-50 rounded-lg shadow-sm"><p class="text-sm text-violet-700 font-semibold">IF Score</p><p class="text-xl font-bold text-violet-900">${format(latestData.iso_score, 3)}</p></div>
-                <div class="p-3 bg-pink-50 rounded-lg shadow-sm"><p class="text-sm text-pink-700 font-semibold">HST Score</p><p class="text-xl font-bold text-pink-900">${format(latestData.river_score, 3)}</p></div>
-                <div class="p-3 bg-orange-50 rounded-lg shadow-sm"><p class="text-sm text-orange-700 font-semibold">Warning Level</p><p class="text-xl font-bold text-orange-900">${format(latestData.warning_level_numerical, 3)}</p></div>`;
+                <div class="p-3 bg-violet-50 rounded-lg shadow-sm">
+                    <p class="text-sm text-violet-700 font-semibold">IF Score</p>
+                    <p class="text-xl font-bold text-violet-900">${latestData.iso_score !== undefined && latestData.iso_score !== null ? latestData.iso_score.toFixed(3) : 'N/A'}</p>
+                </div>
+                <div class="p-3 bg-pink-50 rounded-lg shadow-sm">
+                    <p class="text-sm text-pink-700 font-semibold">HST Score</p>
+                    <p class="text-xl font-bold text-pink-900">${latestData.river_score !== undefined && latestData.river_score !== null ? latestData.river_score.toFixed(3) : 'N/A'}</p>
+                </div>
+                <div class="p-3 bg-orange-50 rounded-lg shadow-sm">
+                    <p class="text-sm text-orange-700 font-semibold">Warning Level</p>
+                    <p class="text-xl font-bold text-orange-900">${latestData.warning_level_numerical !== undefined && latestData.warning_level_numerical !== null ? latestData.warning_level_numerical.toFixed(3) : 'N/A'}</p>
+                </div>
+            `;
         }
 
         /**
-         * Initializes all charts for a specific individual node.
+         * Initializes a chart for a specific individual node.
+         * @param {string} nodeId - The ID of the node.
          */
         function initializeIndividualNodeChart(nodeId) {
             const chartDivId = `nodeChart_${nodeId}`;
-            const isoChartDivId = `nodeIsoScoreChart_${nodeId}`;
-            const riverChartDivId = `nodeRiverScoreChart_${nodeId}`;
-            const warningChartDivId = `nodeWarningLevelChart_${nodeId}`;
+            const isoChartDivId = `nodeIsoScoreChart_${nodeId}`; // New
+            const riverChartDivId = `nodeRiverScoreChart_${nodeId}`; // New
+            const warningChartDivId = `nodeWarningLevelChart_${nodeId}`; // New
 
             const chartDiv = document.getElementById(chartDivId);
             const isoChartDiv = document.getElementById(isoChartDivId);
             const riverChartDiv = document.getElementById(riverChartDivId);
             const warningChartDiv = document.getElementById(warningChartDivId);
 
-            if (!chartDiv || !isoChartDiv || !riverChartDiv || !warningChartDiv) return;
+            if (!chartDiv || !isoChartDiv || !riverChartDiv || !warningChartDiv) {
+                console.error(`One or more chart divs not found for node: ${nodeId}`);
+                return;
+            }
 
             const commonLayout = {
-                xaxis: { 
-                    title: 'Time', 
-                    showgrid: true, 
-                    linecolor: '#cbd5e1', 
-                    linewidth: 1 
+                xaxis: {
+                    title: 'Time',
+                    showgrid: true,
+                    tickformat: '%H:%M:%S',
+                    linecolor: '#cbd5e1',
+                    linewidth: 1
                 },
                 margin: { l: 50, r: 20, t: 40, b: 50 },
                 hovermode: 'x unified',
                 responsive: true,
-                paper_bgcolor: 'var(--card-bg)',
-                plot_bgcolor: 'var(--card-bg)',
-                font: { family: 'Inter, sans-serif', color: 'var(--text-color)' },
-                legend: { x: 0, y: 1.15, orientation: 'h', bgcolor: 'rgba(255, 255, 255, 0)', bordercolor: 'rgba(255, 255, 255, 0)' }
+                paper_bgcolor: 'var(--card-bg)', /* Use CSS variable */
+                plot_bgcolor: 'var(--card-bg)', /* Use CSS variable */
+                font: {
+                    family: 'Inter, sans-serif',
+                    color: 'var(--text-color)' /* Use CSS variable */
+                },
+                legend: {
+                    x: 0, y: 1.15,
+                    orientation: 'h',
+                    bgcolor: 'rgba(255, 255, 255, 0)',
+                    bordercolor: 'rgba(255, 255, 255, 0)'
+                }
             };
 
-            const sensorLayout = { ...commonLayout, title: { text: `Node ${nodeId} Sensor Data`, font: { size: 16, color: '#334155' } }, yaxis: { title: 'Value', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [0, 4095] } };
+            // Sensor Data Chart
+            const sensorLayout = {
+                ...commonLayout,
+                title: { text: `Node ${nodeId} Sensor Data`, font: { size: 16, color: '#334155' } },
+                yaxis: {
+                    title: 'Value',
+                    showgrid: true,
+                    linecolor: '#cbd5e1',
+                    linewidth: 1,
+                    range: [0, 4095]
+                }
+            };
             Plotly.newPlot(chartDiv, [
-                { x: [], y: [], mode: 'lines', name: 'Rain', line: { color: '#3b82f6', width: 2 } },
-                { x: [], y: [], mode: 'lines', name: 'Soil', line: { color: '#22c55e', width: 2 } },
-                { x: [], y: [], mode: 'lines', name: 'Vib (g)', line: { color: '#ef4444', width: 2 } }
+                { x: individualNodeData[nodeId].timestamps, y: individualNodeData[nodeId].rain, mode: 'lines', name: 'Rain', line: { color: '#3b82f6', width: 2 } },
+                { x: individualNodeData[nodeId].timestamps, y: individualNodeData[nodeId].soil, mode: 'lines', name: 'Soil Moisture', line: { color: '#22c55e', width: 2 } },
+                { x: individualNodeData[nodeId].timestamps, y: individualNodeData[nodeId].vibration, mode: 'lines', name: 'Vibration (g)', line: { color: '#ef4444', width: 2 } }
             ], sensorLayout, { displayModeBar: false, responsive: true });
             individualChartInstances[`sensor_${nodeId}`] = chartDiv;
 
-            const isoLayout = { ...commonLayout, title: { text: `Node ${nodeId} IF Score`, font: { size: 14, color: '#334155' } }, yaxis: { title: 'Score', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [-0.5, 0.5] } };
-            Plotly.newPlot(isoChartDiv, [{ x: [], y: [], mode: 'lines', name: 'IF Score', line: { color: '#8b5cf6', width: 2 } }], isoLayout, { displayModeBar: false, responsive: true });
+            // Isolation Forest Chart
+            const isoLayout = {
+                ...commonLayout,
+                title: { text: `Node ${nodeId} IF Score`, font: { size: 14, color: '#334155' } },
+                yaxis: {
+                    title: 'Score',
+                    showgrid: true,
+                    linecolor: '#cbd5e1',
+                    linewidth: 1,
+                    range: [-0.5, 0.5]
+                }
+            };
+            Plotly.newPlot(isoChartDiv, [{
+                x: individualNodeData[nodeId].timestamps,
+                y: individualNodeData[nodeId].iso_score,
+                mode: 'lines',
+                name: 'IF Score',
+                line: { color: '#8b5cf6', width: 2 }
+            }], isoLayout, { displayModeBar: false, responsive: true });
             individualChartInstances[`iso_${nodeId}`] = isoChartDiv;
 
-            const riverLayout = { ...commonLayout, title: { text: `Node ${nodeId} HST Score`, font: { size: 14, color: '#334155' } }, yaxis: { title: 'Score', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [0, 1] } };
-            Plotly.newPlot(riverChartDiv, [{ x: [], y: [], mode: 'lines', name: 'HST Score', line: { color: '#ec4899', width: 2 } }], riverLayout, { displayModeBar: false, responsive: true });
+            // River HalfSpaceTrees Chart
+            const riverLayout = {
+                ...commonLayout,
+                title: { text: `Node ${nodeId} HST Score`, font: { size: 14, color: '#334155' } },
+                yaxis: {
+                    title: 'Score',
+                    showgrid: true,
+                    linecolor: '#cbd5e1',
+                    linewidth: 1,
+                    range: [0, 1] // Changed range to 0-1
+                }
+            };
+            Plotly.newPlot(riverChartDiv, [{
+                x: individualNodeData[nodeId].timestamps,
+                y: individualNodeData[nodeId].river_score,
+                mode: 'lines',
+                name: 'HST Score',
+                line: { color: '#ec4899', width: 2 }
+            }], riverLayout, { displayModeBar: false, responsive: true });
             individualChartInstances[`river_${nodeId}`] = riverChartDiv;
 
-            const warningLayout = { ...commonLayout, title: { text: `Node ${nodeId} Warning Level`, font: { size: 14, color: '#334155' } }, yaxis: { title: 'Level', showgrid: true, linecolor: '#cbd5e1', linewidth: 1, range: [0.0, 2.0] } };
-            Plotly.newPlot(warningChartDiv, [{ x: [], y: [], mode: 'lines', name: 'Warning Level', line: { color: '#f97316', width: 2 } }], warningLayout, { displayModeBar: false, responsive: true });
+            // Ensemble Warning Level Chart
+            const warningLayout = {
+                ...commonLayout,
+                title: { text: `Node ${nodeId} Warning Level`, font: { size: 14, color: '#334155' } },
+                yaxis: {
+                    title: 'Level',
+                    showgrid: true,
+                    linecolor: '#cbd5e1',
+                    linewidth: 1,
+                    range: [0.0, 2.0], // Changed range to 0.0-2.0
+                    // Removed tickmode, tickvals, ticktext to display numerical values
+                }
+            };
+            Plotly.newPlot(warningChartDiv, [{
+                x: individualNodeData[nodeId].timestamps,
+                y: individualNodeData[nodeId].warning_level_numerical,
+                mode: 'lines',
+                name: 'Warning Level',
+                line: { color: '#f97316', width: 2 }
+            }], warningLayout, { displayModeBar: false, responsive: true });
             individualChartInstances[`warning_${nodeId}`] = warningChartDiv;
         }
 
         /**
-         * Updates the charts for a specific individual node with new data.
+         * Updates the chart for a specific individual node with new data.
          */
         function updateIndividualNodeChart(nodeId) {
             const nodeData = individualNodeData[nodeId];
-            if (!nodeData || !individualChartInstances[`sensor_${nodeId}`]) return;
-            
-            const lastTimestamp = nodeData.timestamps[nodeData.timestamps.length - 1];
 
-            const update = (chartKey, y_data_key, trace_index) => {
-                const chart = individualChartInstances[chartKey];
-                const y_data = nodeData[y_data_key][nodeData[y_data_key].length - 1];
-                if (chart) {
-                    Plotly.extendTraces(chart, { x: [[lastTimestamp]], y: [[y_data]] }, [trace_index], MAX_DATA_POINTS);
-                }
-            };
-            
-            update(`sensor_${nodeId}`, 'rain', 0);
-            update(`sensor_${nodeId}`, 'soil', 1);
-            update(`sensor_${nodeId}`, 'vibration', 2);
-            update(`iso_${nodeId}`, 'iso_score', 0);
-            update(`river_${nodeId}`, 'river_score', 0);
-            update(`warning_${nodeId}`, 'warning_level_numerical', 0);
+            // Update Sensor Chart
+            if (individualChartInstances[`sensor_${nodeId}`]) {
+                const updateSensor = {
+                    x: [[nodeData.timestamps[nodeData.timestamps.length - 1]],
+                        [nodeData.timestamps[nodeData.timestamps.length - 1]],
+                        [nodeData.timestamps[nodeData.timestamps.length - 1]]],
+                    y: [[nodeData.rain[nodeData.rain.length - 1]],
+                        [nodeData.soil[nodeData.soil.length - 1]],
+                        [nodeData.vibration[nodeData.vibration.length - 1]]]
+                };
+                Plotly.extendTraces(individualChartInstances[`sensor_${nodeId}`], updateSensor, [0, 1, 2], MAX_DATA_POINTS);
+            } else {
+                initializeIndividualNodeChart(nodeId); // Re-initialize if instance is missing
+            }
+
+
+            // Update Isolation Forest Chart
+            if (individualChartInstances[`iso_${nodeId}`]) {
+                const updateIso = {
+                    x: [[nodeData.timestamps[nodeData.timestamps.length - 1]]],
+                    y: [[nodeData.iso_score[nodeData.iso_score.length - 1]]]
+                };
+                Plotly.extendTraces(individualChartInstances[`iso_${nodeId}`], updateIso, [0], MAX_DATA_POINTS);
+            }
+
+            // Update River HalfSpaceTrees Chart
+            if (individualChartInstances[`river_${nodeId}`]) {
+                const updateRiver = {
+                    x: [[nodeData.timestamps[nodeData.timestamps.length - 1]]],
+                    y: [[nodeData.river_score[nodeData.river_score.length - 1]]]
+                };
+                Plotly.extendTraces(individualChartInstances[`river_${nodeId}`], updateRiver, [0], MAX_DATA_POINTS);
+            }
+
+            // Update Ensemble Warning Level Chart
+            if (individualChartInstances[`warning_${nodeId}`]) {
+                const updateWarning = {
+                    x: [[nodeData.timestamps[nodeData.timestamps.length - 1]]],
+                    y: [[nodeData.warning_level_numerical[nodeData.warning_level_numerical.length - 1]]]
+                };
+                Plotly.extendTraces(individualChartInstances[`warning_${nodeId}`], updateWarning, [0], MAX_DATA_POINTS);
+            }
         }
 
         /**
          * Manages the creation and removal of individual node display sections.
+         * @param {object} currentNodes - An object containing data for all currently active nodes.
          */
         function manageIndividualNodeDisplays(currentNodes) {
             const currentNodeIds = Object.keys(currentNodes);
-            const knownNodeIds = Object.keys(individualNodeData);
+            // Get node IDs currently displayed on the page (from any chart type)
+            const displayedNodeIds = new Set();
+            for (const key in individualNodeData) {
+                displayedNodeIds.add(key);
+            }
 
             let gridClasses = 'grid gap-6';
-            if (currentNodeIds.length === 1) gridClasses += ' grid-cols-1';
-            else if (currentNodeIds.length === 2) gridClasses += ' grid-cols-1 sm:grid-cols-2';
-            else gridClasses += ' grid-cols-1 sm:grid-cols-2 xl:grid-cols-3';
-
+            if (currentNodeIds.length === 1) {
+                gridClasses += ' grid-cols-1 sm:grid-cols-1 lg:grid-cols-1';
+            } else if (currentNodeIds.length === 2) {
+                gridClasses += ' grid-cols-1 sm:grid-cols-2 lg:grid-cols-2';
+            } else if (currentNodeIds.length >= 3) {
+                gridClasses += ' grid-cols-1 sm:grid-cols-2 xl:grid-cols-3';
+            }
+            
             if (currentNodeIds.length > 0) {
                 individualNodesContainer.className = gridClasses;
                 const noDataMessage = individualNodesContainer.querySelector('.text-gray-500');
-                if (noDataMessage) noDataMessage.parentElement.remove();
+                if (noDataMessage && noDataMessage.textContent.includes('No individual node data available yet')) {
+                    individualNodesContainer.innerHTML = '';
+                }
             } else {
                 individualNodesContainer.className = 'flex items-center justify-center h-64 w-full';
-                individualNodesContainer.innerHTML = `<div class="p-4 bg-gray-50 rounded-lg text-center text-gray-500 border border-gray-200">No individual node data available yet.</div>`;
+                individualNodesContainer.innerHTML = `
+                    <div class="p-4 bg-gray-50 rounded-lg text-center text-gray-500 border border-gray-200">
+                        No individual node data available yet.
+                    </div>
+                `;
             }
 
             // Remove nodes that are no longer active
-            knownNodeIds.forEach(nodeId => {
+            displayedNodeIds.forEach(nodeId => {
                 if (!currentNodeIds.includes(nodeId)) {
-                    document.getElementById(`nodeCard_${nodeId}`)?.remove();
-                    ['sensor_', 'iso_', 'river_', 'warning_'].forEach(prefix => delete individualChartInstances[prefix + nodeId]);
-                    delete individualNodeData[nodeId];
+                    const nodeCard = document.getElementById(`nodeCard_${nodeId}`);
+                    if (nodeCard) {
+                        nodeCard.remove();
+                        delete individualNodeData[nodeId];
+                        // Remove all associated Plotly instances
+                        delete individualChartInstances[`sensor_${nodeId}`];
+                        delete individualChartInstances[`iso_${nodeId}`];
+                        delete individualChartInstances[`river_${nodeId}`];
+                        delete individualChartInstances[`warning_${nodeId}`];
+                        console.log(`Removed display for node: ${nodeId}`);
+                    }
                 }
             });
 
-            // Add nodes that are new
+            // Add or update nodes that are active
             currentNodeIds.forEach(nodeId => {
-                if (!knownNodeIds.includes(nodeId)) {
+                if (!displayedNodeIds.has(nodeId)) {
+                    // Create new data structure for the node, including ML scores
+                    individualNodeData[nodeId] = {
+                        timestamps: [],
+                        rain: [],
+                        soil: [],
+                        vibration: [],
+                        iso_score: [],
+                        river_score: [],
+                        warning_level_numerical: []
+                    };
+
                     // Create the HTML structure for the new node
                     const nodeCard = document.createElement('div');
                     nodeCard.id = `nodeCard_${nodeId}`;
@@ -446,201 +795,507 @@
                         <div id="nodeIsoScoreChart_${nodeId}" class="w-full h-48 bg-gray-50 rounded-lg border border-gray-200 mb-4"></div>
                         <div id="nodeRiverScoreChart_${nodeId}" class="w-full h-48 bg-gray-50 rounded-lg border border-gray-200 mb-4"></div>
                         <div id="nodeWarningLevelChart_${nodeId}" class="w-full h-48 bg-gray-50 rounded-lg border border-gray-200 mb-4"></div>
-                        <div id="nodeMetrics_${nodeId}" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4 text-center"></div>`;
+                        <div id="nodeMetrics_${nodeId}" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4 text-center"></div>
+                    `;
                     individualNodesContainer.appendChild(nodeCard);
-                    
-                    // Create new data structure for the node
-                    individualNodeData[nodeId] = {
-                        timestamps: [], rain: [], soil: [], vibration: [],
-                        iso_score: [], river_score: [], warning_level_numerical: []
-                    };
+                    console.log(`Added display for new node: ${nodeId}`);
 
                     // Initialize the charts for the new node
                     initializeIndividualNodeChart(nodeId);
                 }
-                // Always update metrics for currently active nodes
+                // Update metrics for existing or newly added nodes
                 updateIndividualNodeMetrics(nodeId, currentNodes[nodeId]);
             });
 
-            // Relayout all active charts after DOM changes
-            Object.values(individualChartInstances).forEach(chart => Plotly.relayout(chart, { autosize: true }));
+            // After adding/removing nodes and updating grid, relayout all active charts
+            for (const key in individualChartInstances) {
+                if (individualChartInstances.hasOwnProperty(key)) {
+                    Plotly.relayout(individualChartInstances[key], { autosize: true });
+                }
+            }
         }
 
         /**
          * Updates the live metrics display for an individual node.
+         * @param {string} nodeId - The ID of the node.
+         * @param {object} latestData - The latest sensor data for this node.
          */
         function updateIndividualNodeMetrics(nodeId, latestData) {
             const nodeMetricsDiv = document.getElementById(`nodeMetrics_${nodeId}`);
-            const format = (val, digits = 0) => (val !== undefined && val !== null ? val.toFixed(digits) : 'N/A');
             if (nodeMetricsDiv) {
                 nodeMetricsDiv.innerHTML = `
-                    <div class="p-2 bg-blue-50 rounded-md text-sm"><p class="text-blue-700 font-semibold">Rain:</p><p class="text-blue-900 font-bold">${format(latestData.rain)}</p></div>
-                    <div class="p-2 bg-green-50 rounded-md text-sm"><p class="text-green-700 font-semibold">Soil:</p><p class="text-green-900 font-bold">${format(latestData.soil)}</p></div>
-                    <div class="p-2 bg-red-50 rounded-md text-sm"><p class="text-red-700 font-semibold">Vib (g):</p><p class="text-red-900 font-bold">${format(latestData.vibration, 3)}g</p></div>
-                    <div class="p-2 bg-orange-50 rounded-md text-sm"><p class="text-orange-700 font-semibold">Tilt:</p><p class="text-orange-900 font-bold">${format(latestData.tilt, 1)}°</p></div>
-                    <div class="p-2 bg-violet-50 rounded-md text-sm"><p class="text-violet-700 font-semibold">IF Score:</p><p class="text-violet-900 font-bold">${format(latestData.iso_score, 3)}</p></div>
-                    <div class="p-2 bg-pink-50 rounded-md text-sm"><p class="text-pink-700 font-semibold">HST Score:</p><p class="text-pink-900 font-bold">${format(latestData.river_score, 3)}</p></div>
-                    <div class="p-2 bg-orange-50 rounded-md text-sm"><p class="text-orange-700 font-semibold">Warning:</p><p class="text-orange-900 font-bold">${format(latestData.warning_level_numerical, 3)}</p></div>`;
+                    <div class="p-2 bg-blue-50 rounded-md text-sm">
+                        <p class="text-blue-700 font-semibold">Rain:</p>
+                        <p class="text-blue-900 font-bold">${latestData.rain !== undefined ? latestData.rain.toFixed(0) : 'N/A'}</p>
+                    </div>
+                    <div class="p-2 bg-green-50 rounded-md text-sm">
+                        <p class="text-green-700 font-semibold">Soil:</p>
+                        <p class="text-green-900 font-bold">${latestData.soil !== undefined ? latestData.soil.toFixed(0) : 'N/A'}</p>
+                    </div>
+                    <div class="p-2 bg-red-50 rounded-md text-sm">
+                        <p class="text-red-700 font-semibold">Vib (g):</p>
+                        <p class="text-red-900 font-bold">${latestData.vibration !== undefined ? latestData.vibration.toFixed(3) : 'N/A'}g</p>
+                    </div>
+                    <div class="p-2 bg-orange-50 rounded-md text-sm">
+                        <p class="text-orange-700 font-semibold">Tilt:</p>
+                        <p class="text-orange-900 font-bold">${latestData.tilt !== undefined ? latestData.tilt.toFixed(1) : 'N/A'}°</p>
+                    </div>
+                    <div class="p-2 bg-violet-50 rounded-md text-sm">
+                        <p class="text-violet-700 font-semibold">IF Score:</p>
+                        <p class="text-violet-900 font-bold">${latestData.iso_score !== undefined && latestData.iso_score !== null ? latestData.iso_score.toFixed(3) : 'N/A'}</p>
+                    </div>
+                    <div class="p-2 bg-pink-50 rounded-md text-sm">
+                        <p class="text-pink-700 font-semibold">HST Score:</p>
+                        <p class="text-pink-900 font-bold">${latestData.river_score !== undefined && latestData.river_score !== null ? latestData.river_score.toFixed(3) : 'N/A'}</p>
+                    </div>
+                    <div class="p-2 bg-orange-50 rounded-md text-sm">
+                        <p class="text-orange-700 font-semibold">Warning:</p>
+                        <p class="text-orange-900 font-bold">${latestData.warning_level_numerical !== undefined && latestData.warning_level_numerical !== null ? latestData.warning_level_numerical.toFixed(3) : 'N/A'}</p>
+                    </div>
+                `;
             }
         }
 
         /**
          * Updates the list of active nodes displayed on the dashboard.
+         * @param {Array<string>} nodeIds - An array of active node IDs.
          */
         function updateActiveNodesList(nodeIds) {
             if (nodeIds.length === 0) {
                 activeNodesListDiv.innerHTML = '<p class="text-gray-500">No nodes detected yet...</p>';
             } else {
-                activeNodesListDiv.innerHTML = nodeIds.map(id => `<div class="flex items-center text-gray-700 py-1"><span class="h-2 w-2 rounded-full bg-blue-400 mr-2"></span><span>Node ${id}</span></div>`).join('');
+                activeNodesListDiv.innerHTML = nodeIds.map(id => `
+                    <div class="flex items-center text-gray-700 py-1">
+                        <span class="h-2 w-2 rounded-full bg-blue-400 mr-2"></span>
+                        <span>Node ${id}</span>
+                    </div>
+                `).join('');
             }
         }
 
         /**
          * Updates the current data table with the latest information for each node.
+         * @param {object} nodesData - An object containing data for all currently active nodes.
          */
         function updateNodeDataTable(nodesData) {
             let tableHtml = '';
-            const nodeIds = Object.keys(nodesData).sort();
+            const nodeIds = Object.keys(nodesData).sort(); // Sort by Node ID for consistent display
 
             if (nodeIds.length === 0) {
                 tableHtml = '<tr><td colspan="10" class="text-center text-gray-500 py-4">No node data available.</td></tr>';
             } else {
                 nodeIds.forEach(nodeId => {
                     const node = nodesData[nodeId];
-                    // Use the reliable server timestamp for display
-                    const timestamp = new Date(lastKnownUpdateTimestamp).toLocaleTimeString();
-                    const format = (val, digits = 0) => (val !== undefined && val !== null ? val.toFixed(digits) : 'N/A');
+                    const timestamp = new Date(node.timestamp).toLocaleTimeString();
                     tableHtml += `
                         <tr>
                             <td>${nodeId}</td>
                             <td>${timestamp}</td>
                             <td>${node.mac || 'N/A'}</td>
-                            <td>${format(node.rain)}</td>
-                            <td>${format(node.soil)}</td>
-                            <td>${format(node.vibration, 3)}</td>
-                            <td>${format(node.tilt, 1)}</td>
-                            <td>${format(node.iso_score, 3)}</td>
-                            <td>${format(node.river_score, 3)}</td>
-                            <td>${format(node.warning_level_numerical, 3)}</td>
-                        </tr>`;
+                            <td>${node.rain !== undefined ? node.rain.toFixed(0) : 'N/A'}</td>
+                            <td>${node.soil !== undefined ? node.soil.toFixed(0) : 'N/A'}</td>
+                            <td>${node.vibration !== undefined ? node.vibration.toFixed(3) : 'N/A'}</td>
+                            <td>${node.tilt !== undefined ? node.tilt.toFixed(1) : 'N/A'}</td>
+                            <td>${node.iso_score !== undefined && node.iso_score !== null ? node.iso_score.toFixed(3) : 'N/A'}</td>
+                            <td>${node.river_score !== undefined && node.river_score !== null ? node.river_score.toFixed(3) : 'N/A'}</td>
+                            <td>${node.warning_level_numerical !== undefined && node.warning_level_numerical !== null ? node.warning_level_numerical.toFixed(3) : 'N/A'}</td>
+                        </tr>
+                    `;
                 });
             }
             nodeDataTableBody.innerHTML = tableHtml;
         }
 
+
         /**
          * Sets the connection status display.
+         * @param {boolean} isConnected - True if connected, false otherwise.
+         * @param {string} message - Message to display.
          */
-        function setConnectionStatus(isReceiving, message, lastUpdate) {
-            if (isReceiving) {
-                connectionStatusDot.classList.remove('bg-red-500');
+        function setConnectionStatus(isConnected, message) {
+            if (isConnected) {
+                connectionStatusDot.classList.remove('bg-red-500', 'bg-yellow-500');
                 connectionStatusDot.classList.add('bg-green-500');
-                connectionStatusPulse.classList.add('animate-ping');
-                connectionMessage.classList.remove('text-red-700');
+                connectionStatusPulse.classList.remove('bg-red-400', 'bg-yellow-400');
+                connectionStatusPulse.classList.add('bg-green-400');
+                connectionMessage.classList.remove('text-red-700', 'text-yellow-700');
                 connectionMessage.classList.add('text-green-700');
-                lastUpdateTimeSpan.textContent = lastUpdate ? new Date(lastUpdate).toLocaleString() : 'N/A';
+                connectionStatusPulse.classList.add('animate-ping'); // Ensure pulse is active
             } else {
-                connectionStatusDot.classList.remove('bg-green-500');
+                connectionStatusDot.classList.remove('bg-green-500', 'bg-yellow-500');
                 connectionStatusDot.classList.add('bg-red-500');
-                connectionStatusPulse.classList.remove('animate-ping');
-                connectionMessage.classList.remove('text-green-700');
+                connectionStatusPulse.classList.remove('bg-green-400', 'bg-yellow-400', 'animate-ping'); // Stop pulse
+                connectionStatusPulse.classList.add('bg-red-400');
+                connectionMessage.classList.remove('text-green-700', 'text-yellow-700');
                 connectionMessage.classList.add('text-red-700');
             }
             connectionMessage.textContent = message;
         }
 
         /**
-         * Fetches live sensor data from the Render server backend API.
+         * Updates the CSV logging status display.
+         * @param {boolean} isActive - True if logging is active, false otherwise.
+         */
+        function updateCsvLoggingStatus(isActive) {
+            if (isActive) {
+                csvLoggingStatus.textContent = 'CSV Logging: Active';
+                csvLoggingStatus.classList.remove('text-gray-600', 'text-red-600');
+                csvLoggingStatus.classList.add('text-indigo-700');
+                startCsvBtn.disabled = true;
+                stopCsvBtn.disabled = false;
+                downloadCsvBtn.disabled = true; // Cannot download while logging is active
+            } else {
+                csvLoggingStatus.textContent = 'CSV Logging: Inactive';
+                csvLoggingStatus.classList.remove('text-indigo-700');
+                csvLoggingStatus.classList.add('text-gray-600');
+                startCsvBtn.disabled = false;
+                stopCsvBtn.disabled = true;
+                downloadCsvBtn.disabled = false; // Can download when logging is inactive
+            }
+        }
+
+        /**
+         * Displays a temporary message for CSV actions.
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success', 'error', or 'info'.
+         */
+        function showCsvMessage(message, type) {
+            csvStatusMessage.textContent = message;
+            csvStatusMessage.classList.remove('text-green-700', 'text-red-700', 'text-gray-600');
+            if (type === 'success') {
+                csvStatusMessage.classList.add('text-green-700');
+            } else if (type === 'error') {
+                csvStatusMessage.classList.add('text-red-700');
+            } else {
+                csvStatusMessage.classList.add('text-gray-600');
+            }
+            setTimeout(() => {
+                csvStatusMessage.textContent = '';
+            }, 5000);
+        }
+
+        /**
+         * Clears all chart data and reinitializes charts.
+         * This is useful when changing modes to avoid misleading historical data.
+         */
+        function clearAllChartData() {
+            // Clear overall data
+            overallSensorData = {
+                timestamps: [],
+                rain: [],
+                soil: [],
+                vibration: [],
+                iso_score: [],
+                river_score: [],
+                warning_level_numerical: []
+            };
+
+            // Reinitialize overall sensor chart
+            if (overallSensorChartInstance) {
+                Plotly.newPlot(overallSensorChartDiv, [], {}, { displayModeBar: false, responsive: true });
+                initializeOverallSensorChart();
+            } else {
+                initializeOverallSensorChart();
+            }
+
+            // Reinitialize overall anomaly charts
+            if (overallIsoScoreChartInstance) {
+                Plotly.newPlot(overallIsoScoreChartDiv, [], {}, { displayModeBar: false, responsive: true });
+                Plotly.newPlot(overallRiverScoreChartDiv, [], {}, { displayModeBar: false, responsive: true });
+                Plotly.newPlot(overallWarningLevelChartDiv, [], {}, { displayModeBar: false, responsive: true });
+                initializeOverallAnomalyCharts();
+            } else {
+                initializeOverallAnomalyCharts();
+            }
+
+            // Clear individual node data and remove all node cards
+            for (const key in individualChartInstances) {
+                if (individualChartInstances.hasOwnProperty(key)) {
+                    // Extract nodeId from keys like "sensor_nodeId", "iso_nodeId", etc.
+                    const parts = key.split('_');
+                    const nodeId = parts[1];
+                    const nodeCard = document.getElementById(`nodeCard_${nodeId}`);
+                    if (nodeCard) {
+                        nodeCard.remove();
+                    }
+                }
+            }
+            individualNodeData = {};
+            for (const key in individualChartInstances) {
+                delete individualChartInstances[key];
+            }
+            // Re-add the "No individual node data available yet" message
+            individualNodesContainer.className = 'flex items-center justify-center h-64 w-full';
+            individualNodesContainer.innerHTML = `
+                <div class="p-4 bg-gray-50 rounded-lg text-center text-gray-500 border border-gray-200">
+                    No individual node data available yet.
+                </div>
+            `;
+            updateActiveNodesList([]); // Clear active nodes list
+            updateOverallMetrics({
+                rain: undefined, soil: undefined, vibration: undefined, tilt: undefined,
+                iso_score: undefined, river_score: undefined, warning_level_numerical: undefined
+            }); // Clear overall metrics
+            updateNodeDataTable({}); // Clear node data table
+        }
+
+
+        /**
+         * Sends a request to the Flask backend to change the ESP32's operating mode.
+         * @param {string} mode - The mode to set ('data_collection' or 'standby').
+         */
+        async function setESP32Mode(mode) {
+            modeStatusMessage.textContent = `Setting mode to ${mode}...`;
+            modeStatusMessage.className = 'mt-4 text-center text-sm font-medium text-gray-600';
+
+            try {
+                const response = await fetch(SET_MODE_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ mode: mode })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.status === 'success') {
+                    currentModeDisplay.textContent = `Current Mode: ${mode.replace('_', ' ').toUpperCase()}`;
+                    modeStatusMessage.textContent = `Successfully set to ${mode.replace('_', ' ')} mode.`;
+                    modeStatusMessage.className = 'mt-4 text-center text-sm font-medium text-green-700';
+                    clearAllChartData(); // Clear charts when mode changes
+                } else {
+                    currentModeDisplay.textContent = `Current Mode: Error`;
+                    modeStatusMessage.textContent = `Failed to set mode: ${result.message || 'Unknown error'}`;
+                    modeStatusMessage.className = 'mt-4 text-center text-sm font-medium text-red-700';
+                }
+            } catch (error) {
+                console.error('Error setting ESP32 mode:', error);
+                currentModeDisplay.textContent = `Current Mode: Disconnected`;
+                modeStatusMessage.textContent = 'Network error: Could not reach backend to set mode.';
+                modeStatusMessage.className = 'mt-4 text-center text-sm font-medium text-red-700';
+            }
+            // Clear status message after a few seconds
+            setTimeout(() => {
+                modeStatusMessage.textContent = '';
+            }, 5000);
+        }
+
+        /**
+         * Handles starting CSV logging.
+         */
+        async function startCsvLogging() {
+            showCsvMessage('Starting CSV logging...', 'info');
+            try {
+                const response = await fetch(START_CSV_API_URL, { method: 'POST' });
+                const result = await response.json();
+                if (response.ok && result.status === 'success') {
+                    showCsvMessage(result.message, 'success');
+                    updateCsvLoggingStatus(true);
+                } else {
+                    showCsvMessage(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error starting CSV logging:', error);
+                showCsvMessage('Network error: Could not reach backend to start logging.', 'error');
+            }
+        }
+
+        /**
+         * Handles stopping CSV logging.
+         */
+        async function stopCsvLogging() {
+            showCsvMessage('Stopping CSV logging...', 'info');
+            try {
+                const response = await fetch(STOP_CSV_API_URL, { method: 'POST' });
+                const result = await response.json();
+                if (response.ok && result.status === 'success') {
+                    showCsvMessage(result.message, 'success');
+                    updateCsvLoggingStatus(false);
+                } else {
+                    showCsvMessage(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error stopping CSV logging:', error);
+                showCsvMessage('Network error: Could not reach backend to stop logging.', 'error');
+            }
+        }
+
+        /**
+         * Handles downloading the CSV log file.
+         */
+        async function downloadCsv() {
+            showCsvMessage('Preparing download...', 'info');
+            try {
+                // Fetch the file directly, as_attachment=True will trigger download
+                const response = await fetch(DOWNLOAD_CSV_API_URL);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = 'anomaly_log.csv'; // Default filename
+                    if (contentDisposition) {
+                        const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+                        if (filenameMatch && filenameMatch[1]) {
+                            filename = filenameMatch[1];
+                        }
+                    }
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    showCsvMessage('CSV file downloaded successfully!', 'success');
+                } else {
+                    const errorText = await response.json();
+                    showCsvMessage(`Download failed: ${errorText.message || response.statusText}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error downloading CSV:', error);
+                showCsvMessage('Network error: Could not download CSV.', 'error');
+            }
+        }
+
+
+        /**
+         * Fetches live sensor data from the Flask backend API.
          */
         async function fetchSensorData() {
             try {
                 const response = await fetch(API_URL);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const data = await response.json();
 
-                if (!data || !data.last_updated) {
-                    setConnectionStatus(false, 'Waiting for data...', null);
-                    return;
+                // Update connection status to connected
+                setConnectionStatus(true, 'Connected to Backend');
+                lastUpdateTimeSpan.textContent = new Date().toLocaleTimeString();
+                updateCsvLoggingStatus(data.is_logging_active); // Update CSV logging status from backend
+
+                // Process Overall Sensor Data
+                const timestamp = new Date(data.timestamp);
+                overallSensorData.timestamps.push(timestamp);
+                overallSensorData.rain.push(data.overall_data.rain);
+                overallSensorData.soil.push(data.overall_data.soil);
+                overallSensorData.vibration.push(data.overall_data.vibration);
+                overallSensorData.iso_score.push(data.overall_data.iso_score); // New
+                overallSensorData.river_score.push(data.overall_data.river_score); // New
+                overallSensorData.warning_level_numerical.push(data.overall_data.warning_level_numerical); // New
+
+                // Trim old data to maintain MAX_DATA_POINTS
+                if (overallSensorData.timestamps.length > MAX_DATA_POINTS) {
+                    overallSensorData.timestamps.shift();
+                    overallSensorData.rain.shift();
+                    overallSensorData.soil.shift();
+                    overallSensorData.vibration.shift();
+                    overallSensorData.iso_score.shift(); // New
+                    overallSensorData.river_score.shift(); // New
+                    overallSensorData.warning_level_numerical.shift(); // New
                 }
-                
-                if (data.last_updated === lastKnownUpdateTimestamp) {
-                    setConnectionStatus(true, 'Receiving Data', data.last_updated);
-                    return; 
-                }
-                
-                lastKnownUpdateTimestamp = data.last_updated;
-                setConnectionStatus(true, 'Receiving Data', data.last_updated);
 
-                const updateTimestamp = new Date(data.last_updated);
-                const overallData = data.overall_data;
-                const nodesData = data.nodes;
-                
-                // Manage the display of individual node cards
-                manageIndividualNodeDisplays(nodesData);
+                updateOverallSensorChart();
+                updateOverallAnomalyCharts(); // New
+                updateOverallMetrics(data.overall_data);
 
-                // Update overall charts and metrics
-                updateOverallCharts(updateTimestamp, overallData);
-                updateOverallMetrics(overallData);
-                
-                // Update node table and active nodes list
-                updateNodeDataTable(nodesData);
-                updateActiveNodesList(Object.keys(nodesData));
+                // Process Individual Node Data
+                manageIndividualNodeDisplays(data.nodes); // Add/remove node cards as needed
+                updateNodeDataTable(data.nodes); // Update the new table
+                const activeNodeIds = [];
+                for (const nodeId in data.nodes) {
+                    activeNodeIds.push(nodeId);
+                    const nodeTimestamp = new Date(data.nodes[nodeId].timestamp);
+                    const nodeData = data.nodes[nodeId];
 
-                // Process and store historical data for all individual nodes
-                for (const nodeId in nodesData) {
-                    const nodeData = nodesData[nodeId];
-                    const nodeHistory = individualNodeData[nodeId];
-
-                    // This check is now redundant because manageIndividualNodeDisplays ensures the object exists,
-                    // but it's safe to keep.
-                    if (!nodeHistory) continue;
-
-                    // Add new data point to the historical arrays
-                    nodeHistory.timestamps.push(updateTimestamp);
-                    nodeHistory.rain.push(nodeData.rain);
-                    nodeHistory.soil.push(nodeData.soil);
-                    nodeHistory.vibration.push(nodeData.vibration);
-                    nodeHistory.iso_score.push(nodeData.iso_score);
-                    nodeHistory.river_score.push(nodeData.river_score);
-                    nodeHistory.warning_level_numerical.push(nodeData.warning_level_numerical);
-
-                    // Trim old data to maintain MAX_DATA_POINTS
-                    if (nodeHistory.timestamps.length > MAX_DATA_POINTS) {
-                        Object.keys(nodeHistory).forEach(key => nodeHistory[key].shift());
+                    // Ensure node data structure exists and includes new ML fields
+                    if (!individualNodeData[nodeId]) {
+                        individualNodeData[nodeId] = {
+                            timestamps: [], rain: [], soil: [], vibration: [],
+                            iso_score: [], river_score: [], warning_level_numerical: []
+                        };
                     }
-                    
-                    // Update the chart for this specific node
+
+                    individualNodeData[nodeId].timestamps.push(nodeTimestamp);
+                    individualNodeData[nodeId].rain.push(nodeData.rain);
+                    individualNodeData[nodeId].soil.push(nodeData.soil);
+                    individualNodeData[nodeId].vibration.push(nodeData.vibration);
+                    individualNodeData[nodeId].iso_score.push(nodeData.iso_score); // New
+                    individualNodeData[nodeId].river_score.push(nodeData.river_score); // New
+                    individualNodeData[nodeId].warning_level_numerical.push(nodeData.warning_level_numerical); // New
+
+                    // Trim old data for individual node
+                    if (individualNodeData[nodeId].timestamps.length > MAX_DATA_POINTS) {
+                        individualNodeData[nodeId].timestamps.shift();
+                        individualNodeData[nodeId].rain.shift();
+                        individualNodeData[nodeId].soil.shift();
+                        individualNodeData[nodeId].vibration.shift();
+                        individualNodeData[nodeId].iso_score.shift(); // New
+                        individualNodeData[nodeId].river_score.shift(); // New
+                        individualNodeData[nodeId].warning_level_numerical.shift(); // New
+                    }
                     updateIndividualNodeChart(nodeId);
+                    updateIndividualNodeMetrics(nodeId, nodeData);
                 }
+                updateActiveNodesList(activeNodeIds);
 
             } catch (error) {
                 console.error('Error fetching sensor data:', error);
-                setConnectionStatus(false, 'Error connecting to server', null);
+                setConnectionStatus(false, 'Disconnected from Backend');
+                lastUpdateTimeSpan.textContent = 'Error fetching data';
+                // Optionally, clear charts or show error message on UI
             }
         }
 
-        // Initialize charts and start fetching data when the DOM is ready
+        // Initialize charts when the DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
             initializeOverallSensorChart();
-            initializeOverallAnomalyCharts();
-            fetchSensorData(); // Initial fetch
+            initializeOverallAnomalyCharts(); // Initialize new anomaly charts
+            // Initial fetch to populate charts immediately
+            fetchSensorData();
+            // Set up interval for periodic data fetching
             setInterval(fetchSensorData, FETCH_INTERVAL_MS);
 
-            const themeIcon = document.getElementById("themeIcon");
-            if (document.body.classList.contains("dark-mode")) themeIcon.textContent = "☀️";
-            else themeIcon.textContent = "�";
+            // Add event listeners for mode control buttons
+            dataCollectionBtn.addEventListener('click', () => setESP32Mode('data_collection'));
+            standbyBtn.addEventListener('click', () => setESP32Mode('standby'));
+
+            // Add event listeners for CSV logging buttons
+            startCsvBtn.addEventListener('click', startCsvLogging);
+            stopCsvBtn.addEventListener('click', stopCsvLogging);
+            downloadCsvBtn.addEventListener('click', downloadCsv);
+
+            // Set initial theme icon based on current mode
+            if (document.body.classList.contains("dark-mode")) {
+                themeIcon.textContent = "☀️";
+            } else {
+                themeIcon.textContent = "🌙";
+            }
 
             themeIcon.addEventListener("click", function () {
                 document.body.classList.toggle("dark-mode");
                 themeIcon.textContent = document.body.classList.contains("dark-mode") ? "☀️" : "🌙";
             });
 
+
+            // Handle window resize for Plotly charts
             window.onresize = function() {
-                Object.values(individualChartInstances).forEach(chart => Plotly.relayout(chart, { autosize: true }));
-                if (overallSensorChartInstance) Plotly.relayout(overallSensorChartInstance, { autosize: true });
-                if (overallIsoScoreChartInstance) Plotly.relayout(overallIsoScoreChartInstance, { autosize: true });
-                if (overallRiverScoreChartInstance) Plotly.relayout(overallRiverScoreChartInstance, { autosize: true });
-                if (overallWarningLevelChartInstance) Plotly.relayout(overallWarningLevelChartInstance, { autosize: true });
+                if (overallSensorChartInstance) {
+                    Plotly.relayout(overallSensorChartInstance, { autosize: true });
+                }
+                if (overallIsoScoreChartInstance) { // New
+                    Plotly.relayout(overallIsoScoreChartInstance, { autosize: true });
+                }
+                if (overallRiverScoreChartInstance) { // New
+                    Plotly.relayout(overallRiverScoreChartInstance, { autosize: true });
+                }
+                if (overallWarningLevelChartInstance) { // New
+                    Plotly.relayout(overallWarningLevelChartInstance, { autosize: true });
+                }
+                for (const key in individualChartInstances) { // Iterate through all individual chart instances
+                    Plotly.relayout(individualChartInstances[key], { autosize: true });
+                }
             };
         });
     </script>
