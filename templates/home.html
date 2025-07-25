@@ -3,111 +3,42 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NoNet | Home</title>
-  <!-- Tailwind CSS for styling -->
+  <title>NoNet Cloud | Home</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Inter font for a clean look -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    /* Custom CSS for dark mode and font */
-    body {
-      font-family: 'Inter', sans-serif;
-      transition: background-color 0.3s ease, color 0.3s ease;
-    }
-    :root {
-      --bg-color: #f7f9fb;
-      --text-color: #333;
-      --card-bg: #fff;
-      --nav-bg: #1e3a8a; /* Dark blue for nav */
-      --nav-text: white;
-      --nav-hover-bg: #2563eb; /* Blue-600 */
-      --nav-active-text: #fcd34d; /* Amber-300 */
-    }
-    body.dark-mode {
-      --bg-color: #1c1e21;
-      --text-color: #f0f0f0;
-      --card-bg: #2a2d31;
-      --nav-bg: #1a202c; /* Darker for dark mode nav */
-      --nav-text: #cbd5e1;
-      --nav-hover-bg: #2d3748;
-      --nav-active-text: #fcd34d;
-    }
-
-    /* Styles for the main content area */
-    main {
-      max-width: 900px;
-      margin: auto;
-      padding: 20px;
-    }
-    h1, h2, p {
-      color: var(--text-color);
-      transition: color 0.3s ease;
-    }
-    img {
-      max-width: 100%;
-      height: auto;
-      display: block;
-      margin: 20px auto;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-    /* Theme toggle button styling */
-    #themeIcon {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      cursor: pointer;
-      color: var(--nav-text); /* Matches nav text color */
-      transition: color 0.3s ease;
-      z-index: 10; /* Ensure it's above other elements */
-    }
+    body { font-family: 'Inter', sans-serif; }
   </style>
 </head>
-<body class="bg-[var(--bg-color)] text-[var(--text-color)] min-h-screen flex flex-col">
-  <button id="themeIcon">🌙</button>
-
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
   <!-- Navigation Bar -->
-  <nav class="bg-[var(--nav-bg)] p-4 shadow-md flex justify-center relative">
+  <nav class="bg-blue-800 p-4 shadow-md flex justify-center relative w-full">
     <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center">
-      <div class="text-2xl font-bold text-[var(--nav-text)] mb-2 sm:mb-0">NoNet</div>
-      <div class="flex space-x-4">
-        <a href="/" class="text-[var(--nav-active-text)] font-semibold hover:text-[var(--nav-text)] py-2 px-3 rounded-md transition duration-300 bg-[var(--nav-hover-bg)]">Home</a>
-        <a href="/dashboard" class="text-[var(--nav-text)] font-semibold hover:text-[var(--nav-active-text)] py-2 px-3 rounded-md transition duration-300 hover:bg-[var(--nav-hover-bg)]">Dashboard</a>
-        <a href="/map" class="text-[var(--nav-text)] font-semibold hover:text-[var(--nav-active-text)] py-2 px-3 rounded-md transition duration-300 hover:bg-[var(--nav-hover-bg)]">Map</a>
-        <a href="/about" class="text-[var(--nav-text)] font-semibold hover:text-[var(--nav-active-text)] py-2 px-3 rounded-md transition duration-300 hover:bg-[var(--nav-hover-bg)]">About</a>
-      </div>
+        <div class="text-2xl font-bold text-white mb-2 sm:mb-0">NoNet Cloud</div>
+        <div class="flex space-x-4">
+            <a href="/" class="text-amber-300 font-semibold bg-blue-600 py-2 px-3 rounded-md transition duration-300">Home</a>
+            <a href="/dashboard" class="text-white font-semibold hover:text-amber-300 py-2 px-3 rounded-md transition duration-300 hover:bg-blue-700">Dashboard</a>
+            <a href="/map" class="text-white font-semibold hover:text-amber-300 py-2 px-3 rounded-md transition duration-300 hover:bg-blue-700">Map</a>
+            <a href="/about" class="text-white font-semibold hover:text-amber-300 py-2 px-3 rounded-md transition duration-300 hover:bg-blue-700">About</a>
+        </div>
     </div>
   </nav>
 
-  <header class="text-center py-8">
-    <h1 class="text-4xl sm:text-5xl font-extrabold text-blue-700 mb-2 drop-shadow-lg">Welcome to NoNet</h1>
-    <p class="text-lg text-gray-600">Decentralized Smart Monitoring for Harsh Environments</p>
+  <header class="text-center py-16 bg-white">
+    <h1 class="text-5xl font-extrabold text-blue-700 mb-2">Welcome to the NoNet Cloud Platform</h1>
+    <p class="text-xl text-gray-600">Viewing decentralized smart monitoring data from the field.</p>
   </header>
 
-  <main class="flex-grow">
-    <section class="bg-[var(--card-bg)] p-6 rounded-xl shadow-lg border border-gray-200">
-      <h2 class="text-2xl font-bold text-gray-800 mb-4">Project Overview</h2>
-      <p>NoNet is a wireless mesh system that operates without central internet, enabling sensor data collection in forests, hills, or rail tracks using ESP-NOW and SD logging.</p>
-      <img src="{{ url_for('static', filename='img/nonnet.jpg') }}" alt="NoNet Diagram" class="mt-4">
+  <main class="flex-grow container mx-auto p-8">
+    <section class="bg-white p-8 rounded-xl shadow-lg border border-gray-200 text-center">
+      <h2 class="text-3xl font-bold text-gray-800 mb-4">Project Overview</h2>
+      <p class="text-lg">This web application serves as the cloud-based counterpart to the NoNet local monitoring system. It receives, stores, and visualizes sensor and anomaly data that has been forwarded from a remote, offline-first network.</p>
+      <p class="text-lg mt-4">Use the <a href="/dashboard" class="text-blue-600 hover:underline font-semibold">Dashboard</a> to see live charts and metrics, or visit the <a href="/map" class="text-blue-600 hover:underline font-semibold">Map</a> to view the geographic location of sensor nodes.</p>
     </section>
   </main>
 
-  <script>
-    const themeIcon = document.getElementById("themeIcon");
-    // Set initial theme icon based on current mode
-    if (document.body.classList.contains("dark-mode")) {
-      themeIcon.textContent = "☀️";
-    } else {
-      themeIcon.textContent = "🌙";
-    }
-
-    themeIcon.addEventListener("click", function () {
-      document.body.classList.toggle("dark-mode");
-      themeIcon.textContent = document.body.classList.contains("dark-mode") ? "☀️" : "�";
-    });
-  </script>
+  <footer class="bg-gray-800 text-white text-center p-4 mt-8">
+    <p>&copy; 2024 NoNet Project. All rights reserved.</p>
+  </footer>
 </body>
 </html>
