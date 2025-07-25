@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>NoNet Cloud Sensor Map</title>
+  <title>OSM GeoJSON Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -17,21 +17,20 @@
   <style>
     body {
         font-family: 'Inter', sans-serif;
-        background-color: #f0f2f5; /* Light gray background */
+        background-color: #f0f2f5;
         margin: 0;
         padding: 0;
         display: flex;
         flex-direction: column;
-        height: 100vh; /* Full viewport height */
+        min-height: 100vh;
     }
     #map {
+        height: calc(100vh - 64px); /* Adjusted for header */
         width: 100%;
-        flex-grow: 1; /* Map takes remaining vertical space */
-        border-radius: 0.5rem; /* rounded-lg */
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* shadow-lg */
+        flex-grow: 1;
     }
     .header {
-        background-color: #1e3a8a; /* Dark blue for header */
+        background-color: #1e3a8a;
         padding: 1rem;
         text-align: center;
         color: white;
@@ -41,9 +40,9 @@
         align-items: center;
         justify-content: space-between;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        flex-shrink: 0; /* Prevent header from shrinking */
     }
-    .nav-link {
+    .back-button {
+        background-color: #3b82f6;
         color: white;
         padding: 0.5rem 1rem;
         border-radius: 0.5rem;
@@ -51,12 +50,11 @@
         font-size: 1rem;
         transition: background-color 0.3s ease;
     }
-    .nav-link:hover {
-        background-color: #2563eb; /* Blue-600 */
+    .back-button:hover {
+        background-color: #2563eb;
     }
-    /* Custom marker styling */
     .node-marker-icon {
-        background-color: #ef4444; /* Red-500 */
+        background-color: #ef4444;
         border-radius: 50%;
         width: 28px;
         height: 28px;
@@ -71,42 +69,74 @@
         text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
         cursor: pointer;
     }
-    .node-marker-icon.low-warning { background-color: #22c55e; border-color: #16a34a; }
-    .node-marker-icon.mid-warning { background-color: #f59e0b; border-color: #d97706; }
-    .node-marker-icon.high-warning { background-color: #dc2626; border-color: #991b1b; }
+    .node-marker-icon.low-warning {
+        background-color: #22c55e;
+        border-color: #16a34a;
+    }
+    .node-marker-icon.mid-warning {
+        background-color: #f59e0b;
+        border-color: #d97706;
+    }
+    .node-marker-icon.high-warning {
+        background-color: #dc2626;
+        border-color: #991b1b;
+    }
+    .node-marker-icon.inactive {
+        background-color: #94a3b8;
+        border-color: #64748b;
+        opacity: 0.6;
+    }
   </style>
 </head>
-<body class="p-4">
-  <header class="header mb-4">
-    <a href="/dashboard" class="nav-link">← Back to Dashboard</a>
-    <span>Cloud Sensor Location Map</span>
-    <div class="w-32"></div> <!-- Placeholder to balance flexbox -->
+<body>
+  <header class="header">
+    <a href="/dashboard" class="back-button">← Back to Dashboard</a>
+    <span>Sensor Location Map</span>
+    <div></div> <!-- Placeholder to balance flexbox -->
   </header>
 
   <div id="map"></div>
 
   <script>
-    // Initialize map with a fixed view
-    const map = L.map('map').setView([20.5937, 78.9629], 5); // Centered on India
+    const map = L.map('map').setView([20.5937, 78.9629], 5);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    const markers = L.markerClusterGroup();
+    const markers = L.markerClusterGroup({
+        zoomToBoundsOnClick: false,
+        iconCreateFunction: function(cluster) {
+            const childCount = cluster.getChildCount();
+            let c = ' marker-cluster-';
+            if (childCount < 10) c += 'small';
+            else if (childCount < 100) c += 'medium';
+            else c += 'large';
+            return new L.DivIcon({ html: '<div><span>' + childCount + '</span></div>', className: 'marker-cluster' + c, iconSize: new L.Point(40, 40) });
+        }
+    });
     map.addLayer(markers);
 
     const API_URL = '/api/live_data';
     const FETCH_INTERVAL_MS = 2000;
-    let nodeMarkers = {};
-    let lastKnownUpdateTimestamp = null;
 
-    function createNodeIcon(nodeId, warningLevelText) {
+    let nodeMarkers = {};
+    let activeNodesData = {};
+    let currentOpenPopupId = null;
+    let currentOpenPopupType = null;
+    let trackedClusterMarkerId = null;
+    let isUpdatingMap = false;
+
+    function createNodeIcon(nodeId, warningLevelText, isActive) {
         let className = 'node-marker-icon';
-        if (warningLevelText === 'Low') className += ' low-warning';
-        else if (warningLevelText === 'Mid') className += ' mid-warning';
-        else if (warningLevelText === 'High') className += ' high-warning';
+        if (isActive) {
+            if (warningLevelText === 'Low') className += ' low-warning';
+            else if (warningLevelText === 'Mid') className += ' mid-warning';
+            else if (warningLevelText === 'High') className += ' high-warning';
+        } else {
+            className += ' inactive';
+        }
         return new L.DivIcon({
             className: className,
             html: `<span>${nodeId}</span>`,
@@ -116,80 +146,281 @@
     }
 
     function getNodePopupContent(nodeData) {
-        const timestamp = nodeData.last_seen_by_flask ? new Date(nodeData.last_seen_by_flask).toLocaleString() : 'N/A';
-        const format = (val, digits = 0) => (val !== undefined && val !== null ? val.toFixed(digits) : 'N/A');
-        const getWarningLevelColor = (levelText) => {
-            if (levelText === 'Low') return '#22c55e';
-            if (levelText === 'Mid') return '#f59e0b';
-            if (levelText === 'High') return '#dc2626';
-            return '#475569';
-        };
+        const timestamp = nodeData.last_seen_by_flask ? new Date(nodeData.last_seen_by_flask).toLocaleTimeString() : 'N/A';
+        const statusText = nodeData.isActive ? 'Active' : 'Inactive';
+        const statusColor = nodeData.isActive ? 'green' : 'gray';
 
         return `
-            <div style="font-family: 'Inter', sans-serif; font-size: 1rem; padding: 5px;">
+            <div style="font-family: 'Inter', sans-serif; font-size: 1.0rem; padding: 5px;">
                 <h4 style="font-weight: bold; margin-bottom: 5px; font-size: 1.1rem;">Node ${nodeData.nodeId}</h4>
-                <p><strong>Last Seen:</strong> ${timestamp}</p>
-                <p><strong>Rain:</strong> ${format(nodeData.rain)} | <strong>Soil:</strong> ${format(nodeData.soil)}</p>
-                <p><strong>Vibration:</strong> ${format(nodeData.vibration, 3)}g | <strong>Tilt:</strong> ${format(nodeData.tilt, 1)}°</p>
+                <p><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: bold;">${statusText}</span></p>
+                <p><strong>MAC:</strong> ${nodeData.mac || 'N/A'}</p>
+                <p><strong>Last Update:</strong> ${timestamp}</p>
+                <p><strong>Rain:</strong> ${nodeData.rain !== undefined && nodeData.rain !== null ? nodeData.rain.toFixed(0) : 'N/A'}</p>
+                <p><strong>Soil:</strong> ${nodeData.soil !== undefined && nodeData.soil !== null ? nodeData.soil.toFixed(0) : 'N/A'}</p>
+                <p><strong>Vibration:</strong> ${nodeData.vibration !== undefined && nodeData.vibration !== null ? nodeData.vibration.toFixed(3) : 'N/A'}g</p>
+                <p><strong>Tilt:</strong> ${nodeData.tilt !== undefined && nodeData.tilt !== null ? nodeData.tilt.toFixed(1) : 'N/A'}°</p>
                 <p style="margin-top: 8px;">
-                    <strong>Warning Level:</strong> 
-                    <span style="font-weight: bold; color: ${getWarningLevelColor(nodeData.warning_level_text)};">
-                        ${format(nodeData.warning_level_numerical, 3)} (${nodeData.warning_level_text || 'N/A'})
-                    </span>
+                    <strong>IF Score:</strong> ${nodeData.iso_score !== undefined && nodeData.iso_score !== null ? nodeData.iso_score.toFixed(3) : 'N/A'}<br>
+                    <strong>HST Score:</strong> ${nodeData.river_score !== undefined && nodeData.river_score !== null ? nodeData.river_score.toFixed(3) : 'N/A'}<br>
+                    <strong>Warning Level:</strong> <span style="font-weight: bold; color: ${getWarningLevelColor(nodeData.warning_level_text)};">${nodeData.warning_level_numerical !== undefined && nodeData.warning_level_numerical !== null ? nodeData.warning_level_numerical.toFixed(3) : 'N/A'} (${nodeData.warning_level_text || 'N/A'})</span>
                 </p>
-            </div>`;
+            </div>
+        `;
+    }
+
+    function getWarningLevelColor(levelText) {
+        switch (levelText) {
+            case 'Low': return '#22c55e';
+            case 'Mid': return '#f59e0b';
+            case 'High': return '#dc2626';
+            default: return '#475569';
+        }
+    }
+
+    function getWarningLevelTextFromNumerical(score) {
+        if (score === null || isNaN(score)) return 'N/A';
+        if (score >= 1.5) return 'High';
+        if (score >= 0.5) return 'Mid';
+        return 'Low';
+    }
+
+    function generateClusterPopupContent(cluster) {
+        const childMarkers = cluster.getAllChildMarkers();
+        let totalRain = 0, totalSoil = 0, totalVibration = 0, totalTilt = 0;
+        let totalIsoScore = 0, totalRiverScore = 0, totalWarningLevelNumerical = 0;
+        let countRain = 0, countSoil = 0, countVibration = 0, countTilt = 0;
+        let countIsoScore = 0, countRiverScore = 0, countWarningLevelNumerical = 0;
+        const activeNodeIds = [];
+
+        childMarkers.forEach(marker => {
+            const nodeData = marker.options.nodeData;
+            if (nodeData) {
+                if (nodeData.isActive) activeNodeIds.push(nodeData.nodeId);
+                if (nodeData.rain !== undefined && nodeData.rain !== null) { totalRain += nodeData.rain; countRain++; }
+                if (nodeData.soil !== undefined && nodeData.soil !== null) { totalSoil += nodeData.soil; countSoil++; }
+                if (nodeData.vibration !== undefined && nodeData.vibration !== null) { totalVibration += nodeData.vibration; countVibration++; }
+                if (nodeData.tilt !== undefined && nodeData.tilt !== null) { totalTilt += nodeData.tilt; countTilt++; }
+                if (nodeData.iso_score !== undefined && nodeData.iso_score !== null) { totalIsoScore += nodeData.iso_score; countIsoScore++; }
+                if (nodeData.river_score !== undefined && nodeData.river_score !== null) { totalRiverScore += nodeData.river_score; countRiverScore++; }
+                if (nodeData.warning_level_numerical !== undefined && nodeData.warning_level_numerical !== null) { totalWarningLevelNumerical += nodeData.warning_level_numerical; countWarningLevelNumerical++; }
+            }
+        });
+
+        const avgRain = countRain > 0 ? (totalRain / countRain).toFixed(0) : 'N/A';
+        const avgSoil = countSoil > 0 ? (totalSoil / countSoil).toFixed(0) : 'N/A';
+        const avgVibration = countVibration > 0 ? (totalVibration / countVibration).toFixed(3) : 'N/A';
+        const avgTilt = countTilt > 0 ? (totalTilt / countTilt).toFixed(1) : 'N/A';
+        const avgIsoScore = countIsoScore > 0 ? (totalIsoScore / countIsoScore).toFixed(3) : 'N/A';
+        const avgRiverScore = countRiverScore > 0 ? (totalRiverScore / countRiverScore).toFixed(3) : 'N/A';
+        const avgWarningLevelNumerical = countWarningLevelNumerical > 0 ? (totalWarningLevelNumerical / countWarningLevelNumerical).toFixed(3) : 'N/A';
+        const avgWarningLevelText = getWarningLevelTextFromNumerical(parseFloat(avgWarningLevelNumerical));
+        const avgWarningLevelColor = getWarningLevelColor(avgWarningLevelText);
+
+        return `
+            <div style="font-family: 'Inter', sans-serif; font-size: 1.0rem; max-height: 500px; width: 400px; padding: 5px; overflow-y: auto;">
+                <h4 style="font-weight: bold; margin-bottom: 5px; font-size: 1.1rem;">Cluster Summary (${childMarkers.length} Nodes)</h4>
+                <p><strong>Active Node IDs:</strong> ${activeNodeIds.length > 0 ? activeNodeIds.join(', ') : 'None'}</p>
+                <p style="margin-top: 8px;"><strong>Overall Sensor Data:</strong></p>
+                <ul>
+                    <li>Rain: ${avgRain}</li>
+                    <li>Soil: ${avgSoil}</li>
+                    <li>Vibration: ${avgVibration}g</li>
+                    <li>Tilt: ${avgTilt}°</li>
+                </ul>
+                <p style="margin-top: 8px;"><strong>Overall Anomaly Scores:</strong></p>
+                <ul>
+                    <li>IF Score: ${avgIsoScore}</li>
+                    <li>HST Score: ${avgRiverScore}</li>
+                    <li>Warning Level: <span style="font-weight: bold; color: ${avgWarningLevelColor};">${avgWarningLevelNumerical} (${avgWarningLevelText})</span></li>
+                </ul>
+            </div>
+        `;
     }
 
     async function fetchNodeLocations() {
+        isUpdatingMap = true;
         try {
             const response = await fetch(API_URL);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
-
-            if (!data.last_updated || data.last_updated === lastKnownUpdateTimestamp) {
-                return; // No new data, do nothing
-            }
-            lastKnownUpdateTimestamp = data.last_updated;
-
             const fetchedNodesData = data.nodes;
-            const activeNodeIds = new Set(Object.keys(fetchedNodesData));
-            
-            // Remove markers for nodes that are no longer present
+
+            const newActiveNodeIds = new Set(Object.keys(fetchedNodesData));
+            const markersToDeactivate = [];
+            const markersToReallyRemove = [];
+
             for (const nodeId in nodeMarkers) {
-                if (!activeNodeIds.has(nodeId)) {
-                    markers.removeLayer(nodeMarkers[nodeId]);
-                    delete nodeMarkers[nodeId];
+                if (!newActiveNodeIds.has(nodeId)) {
+                    if (activeNodesData[nodeId] && activeNodesData[nodeId].isActive) {
+                        markersToDeactivate.push(nodeMarkers[nodeId]);
+                    } else {
+                        markersToReallyRemove.push(nodeMarkers[nodeId]);
+                        delete nodeMarkers[nodeId];
+                    }
                 }
             }
 
-            // Add or update markers for active nodes
+            if (markersToReallyRemove.length > 0) markers.removeLayers(markersToReallyRemove);
+
             for (const nodeId in fetchedNodesData) {
                 const nodeData = fetchedNodesData[nodeId];
-                if (nodeData.latitude === null || nodeData.longitude === null) continue;
+                let marker = nodeMarkers[nodeId];
+                let lat = nodeData.latitude;
+                let lon = nodeData.longitude;
 
-                const latLng = [nodeData.latitude, nodeData.longitude];
-                const icon = createNodeIcon(nodeId, nodeData.warning_level_text);
-                const popupContent = getNodePopupContent(nodeData);
+                if (lat === undefined || lat === null || lon === undefined || lon === null) {
+                    if (marker) {
+                        const existingLatLng = marker.getLatLng();
+                        lat = existingLatLng.lat;
+                        lon = existingLatLng.lng;
+                    } else {
+                        console.warn(`Node ${nodeId} has no coordinates, defaulting to [0,0].`);
+                        lat = 0;
+                        lon = 0;
+                    }
+                }
 
-                if (nodeMarkers[nodeId]) {
-                    // Update existing marker
-                    nodeMarkers[nodeId].setLatLng(latLng).setIcon(icon).setPopupContent(popupContent);
+                const updatedNodeData = { ...nodeData, nodeId: nodeId, latitude: lat, longitude: lon, isActive: true };
+
+                if (marker) {
+                    marker.setLatLng([lat, lon]);
+                    marker.setIcon(createNodeIcon(nodeId, nodeData.warning_level_text, true));
+                    marker.options.nodeData = updatedNodeData;
+                    if (marker.getPopup() && marker.isPopupOpen()) {
+                        marker.setPopupContent(getNodePopupContent(updatedNodeData));
+                    }
                 } else {
-                    // Create new marker
-                    const marker = L.marker(latLng, { icon: icon });
-                    marker.bindPopup(popupContent);
+                    marker = L.marker([lat, lon], {
+                        icon: createNodeIcon(nodeId, nodeData.warning_level_text, true),
+                        nodeData: updatedNodeData
+                    });
+                    marker.bindPopup('', { autoClose: false, closeOnClick: false });
+                    marker.on('mouseover', function() {
+                        if (currentOpenPopupType === 'cluster' && currentOpenPopupId) map.closePopup();
+                        if (!this.isPopupOpen()) {
+                            this.setPopupContent(getNodePopupContent(this.options.nodeData));
+                            this.openPopup();
+                            currentOpenPopupId = this.options.nodeData.nodeId;
+                            currentOpenPopupType = 'node';
+                        }
+                    });
+                    marker.on('mouseout', function() {
+                        if (!isUpdatingMap && this.isPopupOpen() && this.options.nodeData.nodeId === currentOpenPopupId && !this._wasClicked) {
+                            this.closePopup();
+                        }
+                    });
+                    marker.on('click', function() {
+                        if (currentOpenPopupType === 'cluster' && currentOpenPopupId) map.closePopup();
+                        this.setPopupContent(getNodePopupContent(this.options.nodeData));
+                        currentOpenPopupId = this.options.nodeData.nodeId;
+                        currentOpenPopupType = 'node';
+                        this._wasClicked = true;
+                        this.openPopup();
+                    });
                     markers.addLayer(marker);
                     nodeMarkers[nodeId] = marker;
                 }
             }
+
+            for (const marker of markersToDeactivate) {
+                const nodeId = marker.options.nodeData.nodeId;
+                const inactiveNodeData = { ...marker.options.nodeData, isActive: false };
+                marker.setIcon(createNodeIcon(nodeId, 'Low', false));
+                marker.options.nodeData = inactiveNodeData;
+                if (marker.isPopupOpen()) marker.closePopup();
+                marker.setPopupContent(getNodePopupContent(inactiveNodeData));
+            }
+
+            activeNodesData = {};
+            for (const nodeId in nodeMarkers) {
+                activeNodesData[nodeId] = nodeMarkers[nodeId].options.nodeData;
+            }
+
+            setTimeout(() => {
+                if (currentOpenPopupType === 'node' && currentOpenPopupId && nodeMarkers[currentOpenPopupId]) {
+                    const marker = nodeMarkers[currentOpenPopupId];
+                    if (marker && !marker.isPopupOpen() && marker._wasClicked) {
+                        marker.setPopupContent(getNodePopupContent(marker.options.nodeData));
+                        marker.openPopup();
+                    }
+                } else if (currentOpenPopupType === 'cluster' && trackedClusterMarkerId) {
+                    const referenceMarker = nodeMarkers[trackedClusterMarkerId];
+                    if (referenceMarker) {
+                        const parentCluster = markers.getVisibleParent(referenceMarker);
+                        if (parentCluster) {
+                            if (!parentCluster.isPopupOpen()) {
+                                parentCluster.setPopupContent(generateClusterPopupContent(parentCluster));
+                                parentCluster.openPopup();
+                            } else {
+                                parentCluster.setPopupContent(generateClusterPopupContent(parentCluster));
+                            }
+                            currentOpenPopupId = parentCluster.getLatLng().toString();
+                        } else {
+                            currentOpenPopupId = null;
+                            currentOpenPopupType = null;
+                            trackedClusterMarkerId = null;
+                        }
+                    } else {
+                        currentOpenPopupId = null;
+                        currentOpenPopupType = null;
+                        trackedClusterMarkerId = null;
+                    }
+                }
+            }, 200);
+
         } catch (error) {
             console.error('Error fetching live node locations:', error);
+        } finally {
+            isUpdatingMap = false;
         }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         fetchNodeLocations();
         setInterval(fetchNodeLocations, FETCH_INTERVAL_MS);
+
+        markers.on('clustermouseover', function (a) {
+            const cluster = a.layer;
+            const childMarkers = cluster.getAllChildMarkers();
+            if (currentOpenPopupType === 'node' && currentOpenPopupId && nodeMarkers[currentOpenPopupId] && nodeMarkers[currentOpenPopupId].isPopupOpen()) {
+                nodeMarkers[currentOpenPopupId].closePopup();
+            }
+            if (childMarkers.length > 0) {
+                trackedClusterMarkerId = childMarkers[0].options.nodeData.nodeId;
+            } else {
+                trackedClusterMarkerId = null;
+            }
+            currentOpenPopupId = cluster.getLatLng().toString();
+            currentOpenPopupType = 'cluster';
+            cluster.bindPopup(generateClusterPopupContent(cluster), { autoClose: false, closeOnClick: false }).openPopup();
+        });
+
+        markers.on('clustermouseout', function (a) {
+            a.layer.closePopup();
+        });
+        
+        markers.on('clusterclick', function (a) {
+            map.closePopup();
+            a.layer.zoomToBounds();
+        });
+
+        map.on('popupclose', function(e) {
+            if (!isUpdatingMap) {
+                const closedPopupSource = e.popup._source;
+                if (currentOpenPopupType === 'node' && closedPopupSource && closedPopupSource.options.nodeData && closedPopupSource.options.nodeData.nodeId === currentOpenPopupId) {
+                    if (closedPopupSource._wasClicked) closedPopupSource._wasClicked = false;
+                    currentOpenPopupId = null;
+                    currentOpenPopupType = null;
+                    trackedClusterMarkerId = null;
+                } 
+                else if (currentOpenPopupType === 'cluster' && closedPopupSource && closedPopupSource.getChildCount) {
+                     currentOpenPopupId = null;
+                     currentOpenPopupType = null;
+                     trackedClusterMarkerId = null;
+                }
+            }
+        });
     });
   </script>
 </body>
